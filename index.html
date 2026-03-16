@@ -1132,40 +1132,12 @@
 
         window.onload = async () => {
             if (!supabaseClient) return lucide.createIcons();
-            
-            // Intercept Google OAuth tokens from the URL instantly BEFORE Supabase clears them
-            let pToken = null;
-            let pRefreshToken = null;
-            if (window.location.hash) {
-                const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                pToken = hashParams.get('provider_token');
-                pRefreshToken = hashParams.get('provider_refresh_token');
-            }
-
             // Check if user is already logged in (active session)
             const { data: sessionData } = await supabaseClient.auth.getSession();
             const session = sessionData?.session;
             
             if (session) {
                 authUserId = session.user.id;
-                
-                // Extract Google Tokens if present from the intercepted URL or the session object
-                const finalPToken = pToken || session.provider_token;
-                const finalPRefreshToken = pRefreshToken || session.provider_refresh_token;
-
-                if (finalPToken || finalPRefreshToken) {
-                    const updates = {};
-                    if (finalPToken) updates.google_access_token = finalPToken;
-                    if (finalPRefreshToken) updates.google_refresh_token = finalPRefreshToken;
-                    
-                    if (Object.keys(updates).length > 0) {
-                        const { error: tokenErr } = await supabaseClient.from('profiles').update(updates).eq('id', authUserId);
-                        if (tokenErr) console.error("Error saving Google tokens:", tokenErr);
-                    }
-                    
-                    // Clean URL hash so we don't accidentally re-save old tokens if the page refreshes
-                    window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
-                }
 
                 // Immediately show the saved page to prevent flashing while data loads
                 const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
