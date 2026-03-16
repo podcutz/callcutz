@@ -1,0 +1,2564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedulr - Team Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    keyframes: {
+                        'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        'zoom-in': { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } }
+                    },
+                    animation: {
+                        'in': 'fade-in 0.2s ease-out, zoom-in 0.2s ease-out forwards',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .cropper-view-box,.cropper-face{border-radius:50%}
+        .cropper-view-box{outline:2px solid rgba(255,255,255,.8)}
+        .cropper-dashed,.cropper-line,.cropper-point,.cropper-center{display:none!important}
+        .cropper-bg{background-color:#000!important;background-image:none!important}
+        .cropper-modal{background-color:rgba(0,0,0,.85)}
+        .cropper-container{transition:transform .2s cubic-bezier(.4,0,.2,1)}
+        .fixed-modal-height{min-height:300px}
+
+        .content-transition {
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        html { scrollbar-gutter: stable; }
+        ::-webkit-scrollbar-thumb {
+            background: #222;
+            border-radius: 10px;
+        }
+
+        .tab-active {
+            color: #ffffff;
+            border-bottom-color: white !important;
+        }
+
+        /* Keep the border height consistent so text doesn't jump */
+        #tab-upcoming, #tab-requests, #tab-past {
+            border-bottom: 2px solid transparent;
+        }
+
+        .custom-checkbox {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .custom-checkbox:checked {
+            background: white;
+            border-color: white;
+        }
+        .custom-checkbox:checked::after {
+            content: '✓';
+            color: black;
+            font-size: 12px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+        }
+
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
+        /* Team View Calendar Styles */
+        .team-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .team-day-cell {
+            background: black;
+            min-height: 120px;
+            padding: 10px;
+            position: relative;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        .team-day-cell:hover {
+            background: rgba(255,255,255,0.03);
+        }
+        .team-day-cell.past {
+            opacity: 0.4;
+        }
+        .team-day-cell.selected {
+            background: rgba(255,255,255,0.08);
+            box-shadow: inset 0 0 0 1px white;
+        }
+        
+        .calendar-squeeze {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse-red 2s infinite;
+            display: inline-block;
+        }
+
+        .tag-work { background: #ffffff; color: #000; font-size: 8px; font-weight: 800; padding: 2px 4px; border-radius: 2px; }
+        .tag-off { background: #333; color: #888; font-size: 8px; font-weight: 800; padding: 2px 4px; border-radius: 2px; }
+        
+        .user-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: white;
+            display: inline-block;
+            margin-right: 2px;
+        }
+
+        /* Booking Calendar Small */
+        .booking-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .booking-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .booking-day:hover:not(.empty) { background: rgba(255,255,255,0.1); }
+        .booking-day.selected { background: white; color: black; font-weight: bold;
+}
+        
+        /* Hide the remove button on the first time slot, and hide the add button on subsequent slots */
+        .time-slot:first-child .remove-slot-btn { display: none !important; }
+        .time-slot:not(:first-child) .add-slot-btn { display: none !important; }
+    </style>
+</head>
+<body class="bg-black text-white font-sans min-h-screen overflow-x-hidden flex">
+
+    <div id="page-login" class="fixed inset-0 z-[2000] bg-black hidden flex-col items-center justify-center">
+        <div class="w-full max-w-sm p-8 bg-[#050505] border border-white/10 rounded-2xl shadow-2xl">
+            <div class="flex items-center justify-center mb-8">
+                <img src="https://res.cloudinary.com/dobnqmfsg/image/upload/v1772612374/Untitled_design__1_-removebg-preview_ux1end.png" alt="Podcutz Logo" class="w-20 h-20 object-contain">
+            </div>
+            <h2 class="text-2xl font-bold capitalize tracking-wide text-center mb-2">Podcutz</h2>
+            <p class="text-[10px] text-white/40 uppercase tracking-widest text-center mb-8">Log in to continue</p>
+            
+            <form id="login-form" class="space-y-4" onsubmit="event.preventDefault(); handleLogin(event);">
+                <div>
+                    <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Email</label>
+                    <input type="email" id="login-email" required class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors" placeholder="name@email.com">
+                </div>
+                <div>
+                    <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Password</label>
+                    <input type="password" id="login-password" required class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors" placeholder="••••••••">
+                </div>
+                <button type="button" id="login-btn" onclick="handleLogin(event)" class="w-full bg-white text-black font-black uppercase tracking-widest text-xs py-3 rounded-lg hover:bg-zinc-200 transition-colors mt-4">
+                    Sign In
+                </button>
+                <p id="login-error" class="text-red-500 text-[10px] font-bold text-center mt-4 hidden"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="border-r border-zinc-800 bg-[#050505] hidden md:flex flex-col sticky top-0 h-screen transition-all duration-300 ease-in-out w-52 pointer-events-auto z-50 shrink-0">
+        <div class="pt-1 flex flex-col items-center min-h-[70px] w-full relative">
+            <div class="w-full flex items-center relative h-14">
+                <div id="sidebarLogoWrapper" class="absolute left-0 w-16 flex justify-center items-center transition-all duration-300 cursor-pointer">
+                    <div class="relative w-10 h-10 flex items-center justify-center">
+                        <img id="sidebarLogoImg" src="https://res.cloudinary.com/dobnqmfsg/image/upload/v1772612374/Untitled_design__1_-removebg-preview_ux1end.png" class="w-8 h-8 object-contain transition-all duration-200" alt="Schedulr Logo" />
+                        <div id="sidebarExpandIcon" class="absolute inset-0 flex items-center justify-center bg-zinc-900 rounded-xl opacity-0 transition-all duration-200 transform scale-90 hidden">
+                            <i data-lucide="panel-left" class="text-white w-[18px] h-[18px]"></i>
+                        </div>
+                    </div>
+                </div>
+                <div id="sidebarCollapseBtnWrapper" class="ml-auto pr-3 opacity-100 transition-opacity duration-300">
+                    <button id="collapseSidebarBtn" class="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors">
+                        <i data-lucide="panel-left-close" class="w-[18px] h-[18px]"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-1 flex-1 flex flex-col w-full">
+            <nav id="nav-container" class="space-y-2 w-full px-3">
+                <button id="nav-dashboard" onclick="showPage('dashboard')" class="nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900">
+                    <div class="w-10 h-9 flex items-center justify-center shrink-0">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    </div>
+                    <div class="nav-label overflow-hidden flex items-center transition-all duration-300 ease-in-out w-full opacity-100">
+                        <span class="text-xs whitespace-nowrap">Dashboard</span>
+                    </div>
+                </button>
+                <button id="nav-availability" onclick="showPage('availability')" class="nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900">
+                    <div class="w-10 h-9 flex items-center justify-center shrink-0">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                    </div>
+                    <div class="nav-label overflow-hidden flex items-center transition-all duration-300 ease-in-out w-full opacity-100">
+                        <span class="text-xs whitespace-nowrap">Availability</span>
+                    </div>
+                </button>
+                <button id="nav-schedule" onclick="showPage('schedule')" class="nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900">
+                    <div class="w-10 h-9 flex items-center justify-center shrink-0">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                    </div>
+                    <div class="nav-label overflow-hidden flex items-center transition-all duration-300 ease-in-out w-full opacity-100">
+                        <span class="text-xs whitespace-nowrap">Schedule Call</span>
+                    </div>
+                </button>
+                <button id="nav-teamview" onclick="showPage('teamview')" class="nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900">
+                    <div class="w-10 h-9 flex items-center justify-center shrink-0">
+                        <i data-lucide="users" class="w-4 h-4"></i>
+                    </div>
+                    <div class="nav-label overflow-hidden flex items-center transition-all duration-300 ease-in-out w-full opacity-100">
+                        <span class="text-xs whitespace-nowrap">Team View</span>
+                    </div>
+                </button>
+            </nav>
+        </div>
+
+        <div class="px-2 pt-4 pb-4 border-t border-white/5">
+            <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer overflow-hidden transition-colors group" onclick="openProfileModal()">
+                <div class="flex items-center">
+                    <div id="sidebar-user-init" class="w-8 h-8 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center text-[10px] font-bold border border-white/10 bg-cover bg-center"></div>
+                    <div class="ml-3 nav-label transition-all duration-300 opacity-100">
+                        <p id="sidebar-user-name" class="text-[11px] font-bold capitalize tracking-wider whitespace-nowrap"></p>
+         
+                <p id="sidebar-user-role" class="text-[9px] text-white/40 capitalize tracking-widest whitespace-nowrap"></p>
+                    </div>
+                </div>
+                <button onclick="event.stopPropagation(); handleLogout()" class="w-7 h-7 rounded-md bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all nav-label shrink-0 z-10" title="Log Out">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5 text-red-500"></i>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="mainContent" class="relative content-transition h-screen flex-1 flex flex-col overflow-y-auto">
+     
+        <header class="p-8 pb-6 bg-black flex justify-between items-end relative">
+            <div>
+                <h1 id="page-title" class="text-4xl font-bold tracking-tighter text-white"></h1>
+                <p id="page-subtitle" class="text-[10px] text-white/40 uppercase tracking-widest mt-2 hidden"></p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="saveAvailability()" id="save-avail-btn" class="bg-white text-black text-xs px-6 py-2.5 font-semibold capitalize tracking-wide rounded-full hidden transition-all hover:bg-zinc-200 shadow-lg">Save Changes</button>
+                
+                <div id="team-view-filters" class="hidden flex items-center space-x-4">
+                    <button onclick="toggleFilterModal()" class="flex items-center space-x-2 bg-white text-black px-4 py-2 rounded-lg hover:bg-zinc-200 transition-colors">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span class="text-[11px] font-semibold capitalize tracking-wide">Filter Teammates</span>
+                        <span id="active-filter-count" class="hidden bg-black text-white text-[8px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="w-full h-[1px] bg-white/10"></div>
+
+        <!-- DASHBOARD PAGE -->
+        <div id="page-dashboard" class="page hidden">
+            <section class="p-8 flex-1 bg-black">
+                <div class="max-w-4xl">
+                    <div class="flex justify-between items-end mb-6">
+                        <h2 class="text-xl font-bold uppercase tracking-widest text-white">Meetings</h2>
+                        <div class="relative">
+                            <div id="tz-dropdown-btn" onclick="toggleTzDropdown()" class="bg-zinc-900 border border-white/10 rounded-full px-4 py-2 flex items-center justify-between shadow-[0_0_20px_rgba(255,255,255,0.05)] cursor-pointer w-64 group hover:border-white/30 transition-all">
+                                <div class="flex items-center space-x-2 overflow-hidden w-full">
+                                    <i data-lucide="globe" class="w-3.5 h-3.5 text-white shrink-0"></i>
+                                    <span id="tz-selected-text" class="text-[10px] text-white font-light tracking-wide truncate pointer-events-none w-full text-left">Loading...</span>
+                                </div>
+                                <i data-lucide="chevron-left" id="tz-chevron" class="w-3 h-3 text-white/40 ml-2 shrink-0 transition-transform duration-200 pointer-events-none"></i>
+                            </div>
+                            <div id="tz-dropdown-menu" class="hidden absolute top-full right-0 mt-2 w-72 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl z-[5000] flex flex-col overflow-hidden">
+                                <div class="p-2 border-b border-white/10">
+                                    <input type="text" id="tz-search" oninput="filterTimezones()" placeholder="Search city or timezone..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-white font-light focus:outline-none focus:border-white/30 transition-colors">
+                                </div>
+                                <div id="tz-list" class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col p-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-black rounded-xl border border-white/10 overflow-hidden shadow-[0_0_50px_rgba(255,255,255,0.02)]">
+                        <div class="flex border-b border-white/10 px-6 pt-2">
+                            <button onclick="switchTab('upcoming')" id="tab-upcoming" class="px-4 py-4 text-xs font-light tracking-widest transition-all tab-active capitalize">Upcoming</button>
+                            <button onclick="switchTab('requests')" id="tab-requests" class="px-4 py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize">Requests <span id="request-count" class="ml-1 bg-white text-black px-1.5 rounded-full text-[9px]">0</span></button>
+                            <button onclick="switchTab('past')" id="tab-past" class="px-4 py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize">Past</button>
+                        </div>
+                        <div class="h-[480px] overflow-y-auto overflow-x-hidden">
+                            <div id="content-upcoming" class="p-4 space-y-2"></div>
+                        <div id="content-requests" class="hidden p-4 space-y-2"></div>
+                        <div id="content-past" class="hidden p-4 space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            
+        </div>
+
+        <!-- AVAILABILITY PAGE -->
+        <div id="page-availability" class="page hidden">
+            <section class="p-4 md:p-8 flex-1 bg-black">
+                <div class="max-w-4xl">
+                    <div class="mb-6 p-6 bg-white/[0.03] rounded-xl border border-white/10 flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+               
+                             <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold uppercase tracking-tight">Global Schedule</h3>
+                                <p class="text-[10px] text-white/40 uppercase tracking-widest">Sync all active days</p>
+                            </div>
+                        </div>
+                         <div class="flex items-center space-x-3">
+                            <span class="text-[10px] font-bold text-white/30 uppercase tracking-widest">Apply All</span>
+                            <input type="checkbox" class="custom-checkbox pointer-events-auto" onchange="toggleAllDays(this.checked); showSaveBtn();">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3" id="daily-schedules">
+                        </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- SCHEDULE CALL PAGE -->
+        <div id="page-schedule" class="page hidden flex-1 flex flex-col">
+            <section class="p-8 flex-1 bg-black">
+                <div id="team-gallery" class="max-w-6xl">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+                </div>
+
+                <div id="booking-interface" class="max-w-4xl hidden mx-auto mt-0">
+                    <div class="flex items-center justify-between mb-8">
+                        <button onclick="closeBooking()" class="flex items-center text-[10px] text-white/40 uppercase tracking-widest font-bold hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                            Back to Team
+                        </button>
+                        <button id="send-booking-btn" disabled onclick="submitBookingRequest()" class="bg-white text-black text-[10px] px-6 py-2.5 font-black uppercase tracking-widest rounded-lg disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-xl">
+                            Send Booking Request
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+                        <div class="md:col-span-4 border-r border-white/10 pr-8">
+                            <div class="flex flex-wrap gap-3 mb-4 items-center" id="selected-participants-wrap">
+                                <div id="b-avatar" class="w-20 h-20 rounded bg-white text-black flex items-center justify-center font-black text-2xl"></div>
+                                <button onclick="openGuestModal()" class="w-20 h-20 rounded border-2 border-dashed border-white/20 bg-white/[0.02] hover:border-white/60 hover:bg-white/10 flex flex-col items-center justify-center transition-all group">
+                                    <i data-lucide="plus" class="w-6 h-6 text-white/40 group-hover:text-white transition-colors"></i>
+                                    <span class="text-[8px] font-bold text-white/40 group-hover:text-white uppercase mt-1">Add Guest</span>
+                                </button>
+                            </div>
+                            <h2 id="b-name" class="text-2xl font-bold tracking-tight"></h2>
+                            <p id="b-role" class="text-[10px] text-white/40 uppercase tracking-[0.2em] mb-6"></p>
+                            <div id="guest-list-names" class="space-y-1 mb-6"></div>
+                            
+<div class="mt-2">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-2 block">Call Title <span class="text-red-500">*</span></label>
+                                <input type="text" id="call-title-input" oninput="validateBookingForm()" placeholder="e.g. Design Sync" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors">
+                            </div>
+                            <div class="mt-4">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-2 block">Notes</label>
+                                <textarea id="call-notes-input" placeholder="Any additional details..." class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors resize-none h-24"></textarea>
+                            </div>
+                        </div>
+                        <div class="md:col-span-8 flex flex-col md:flex-row gap-8">
+                            <div class="flex-1">
+                                <h3 class="text-xs font-bold uppercase tracking-widest mb-4">Select Date</h3>
+                                <div class="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <button onclick="changeBookingMonth(-1)" class="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                                        <h4 id="b-calendar-month-label" class="text-xs font-bold uppercase tracking-widest text-center">Month Year</h4>
+                                        <button onclick="changeBookingMonth(1)" class="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                                    </div>
+                                    <div class="booking-calendar-grid text-[10px] text-white/30 uppercase font-bold mb-2 text-center">
+                                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                                    </div>
+                                    <div id="b-calendar-days" class="booking-calendar-grid"></div>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-48 flex flex-col h-full">
+                                <h3 class="text-xs font-bold uppercase tracking-widest mb-4">Times</h3>
+                                <div id="b-time-slots" class="space-y-2 overflow-y-auto max-h-[300px] flex-1 pr-1 custom-scrollbar">
+                                    <p class="text-[10px] text-white/30 uppercase">Pick a date</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TEAM VIEW PAGE -->
+        <div id="page-teamview" class="page hidden flex-1 flex flex-col overflow-hidden">
+             <div class="flex h-full">
+                <div id="team-calendar-container" class="calendar-squeeze flex-1 p-8 overflow-y-auto">
+                    <div class="bg-black border border-white/10 rounded-2xl shadow-2xl p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 id="team-month-label" class="text-xl font-bold uppercase tracking-widest">Month 2024</h2>
+                             <div class="flex items-center space-x-2">
+                                <button onclick="changeTeamMonth(-1)" class="p-2 border border-white/10 rounded hover:bg-white/10 transition-colors"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                                <button onclick="changeTeamMonth(1)" class="p-2 border border-white/10 rounded hover:bg-white/10 transition-colors"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                         <div class="team-calendar-grid capitalize text-[11px] font-light tracking-wide text-white/40 text-center mb-0 bg-transparent border-0 pb-2">
+                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                        </div>
+                        <div id="team-grid" class="team-calendar-grid border border-white/5 bg-transparent gap-[1px]"></div>
+                    </div>
+                </div>
+                <div id="call-sidelist" class="hidden w-0 opacity-0 border-l border-white/10 bg-black flex flex-col calendar-squeeze overflow-hidden shrink-0">
+                    <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                        <h3 id="side-date-title" class="text-lg font-bold truncate pr-4"></h3>
+                         <button onclick="closeCallList()" class="p-2 hover:bg-white/5 rounded shrink-0 transition-colors"><i data-lucide="x" class="w-4 h-4 text-white/60"></i></button>
+                    </div>
+                    <div id="call-log-container" class="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+                        <div id="live-calls-wrapper"></div>
+                        <div id="upcoming-calls-wrapper"></div>
+                        <div id="past-calls-wrapper"></div>
+                    </div>
+                </div>
+             </div>
+        </div>
+<!-- GLOBAL SUCCESS OVERLAY -->
+<div id="google-sync-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[6000] hidden items-center justify-center p-6">
+            <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl p-8 text-center animate-in">
+                <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
+                    <i data-lucide="calendar-days" class="w-8 h-8 text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold capitalize tracking-wide mb-3">Sync Calendar</h3>
+                <p class="text-xs text-white/50 leading-relaxed mb-8">To sync your G Calendar correctly with the meetings scheduled, please connect your G Account.</p>
+                <button onclick="connectGoogleAccount()" class="w-full bg-white text-black flex items-center justify-center space-x-3 px-6 py-3.5 rounded-xl font-bold capitalize tracking-wide hover:bg-zinc-200 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" viewBox="0 0 48 48">
+                        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.238-2.657-.389-3.917z"/>
+                        <path fill="#FF3D00" d="m6.306 14.691 6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+                        <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+                        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.238-2.657-.389-3.917z"/>
+                    </svg>
+                    <span>Connect G Account</span>
+                </button>
+                <button onclick="closeGoogleSyncModal()" class="mt-4 text-[10px] text-white/40 uppercase tracking-widest hover:text-white transition-colors">Skip for now</button>
+            </div>
+        </div>
+
+<div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-xl hidden items-center justify-center z-[5000] opacity-0 transition-opacity duration-500">
+            <div id="modal-container" class="bg-[#09090b] border border-white/10 rounded-2xl px-8 pb-8 pt-4 w-full max-w-[340px] shadow-[0_32px_64px_-15px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col min-h-[300px]" onclick="event.stopPropagation()">
+                <button onclick="closeProfileModal()" class="absolute top-4 right-4 z-20 text-zinc-500 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></button>
+                <div id="profile-view" class="flex flex-col items-center w-full flex-grow pt-4">
+                    <div class="relative group cursor-pointer" onclick="document.getElementById('file-input').click()">
+                        <div class="w-40 h-40 rounded-full bg-zinc-800 ring-[1px] ring-white/20 shadow-2xl overflow-hidden relative flex items-center justify-center">
+                            <div id="avatar-initials" class="absolute inset-0 flex items-center justify-center text-6xl font-light tracking-tighter text-zinc-100 bg-gradient-to-tr from-zinc-800 via-zinc-900 to-zinc-700"></div>
+                            <img id="avatar-image" class="absolute inset-0 w-full h-full object-cover hidden" src="" alt="Profile">
+                            <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 backdrop-blur-[2px]"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="white" viewBox="0 0 256 256"><path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z"></path></svg></div>
+                        </div>
+                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center border-[4px] border-[#09090b] text-black shadow-lg transform group-hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path></svg></div>
+                    </div>
+                    <div class="w-full flex flex-col items-center text-center mt-6">
+                        <h2 id="modal-user-name" class="text-2xl font-semibold text-zinc-100 tracking-tight leading-tight"></h2>
+                        <p id="modal-user-role" class="text-sm text-zinc-400 font-medium mt-1 uppercase"></p>
+                    </div>
+                </div>
+                <div id="crop-view" class="hidden flex-col w-full flex-grow pt-4">
+                    <div class="mb-4"><h3 class="text-xl font-semibold text-white tracking-tight">Adjust Image</h3><p class="text-xs text-zinc-500 mt-1">Position and scale your photo</p></div>
+                    <div class="w-full aspect-square bg-zinc-950 rounded-xl overflow-hidden relative ring-1 ring-white/10 shadow-2xl">
+                        <img id="image-to-crop" src="" class="block max-w-full">
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col bg-black/80 backdrop-blur-md rounded-lg border border-white/10 overflow-hidden shadow-2xl">
+                            <button id="zoom-in" class="p-2.5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all active:scale-90 border-b border-white/5"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path></svg></button>
+                            <button id="zoom-out" class="p-2.5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"></path></svg></button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-3 text-zinc-500"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8H120a8,8,0,0,1,0-16h8V128H120a8,8,0,0,1,0-16h16a8,8,0,0,1,8,8v40Zm-16-80a12,12,0,1,1,12-12A12,12,0,0,1,128,96Z"></path></svg><span class="text-[9px] font-medium uppercase tracking-wider">Use buttons or drag image</span></div>
+                    <div class="flex justify-between items-center mt-auto pt-4 border-t border-white/5">
+                        <button id="cancel-crop" class="px-5 py-2 text-xs font-medium text-zinc-400 hover:text-white transition-colors">Cancel</button>
+                        <button id="save-crop" class="px-6 py-2 bg-white text-black text-xs font-bold rounded-xl hover:bg-zinc-200 transition-all active:scale-95">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <input type="file" id="file-input" class="hidden" accept="image/*">
+
+<div id="success-overlay" class="fixed inset-y-0 right-0 bg-black flex justify-center opacity-0 pointer-events-none transition-all duration-300 ease-in-out z-[999] w-full md:left-52 md:w-auto">
+    <div class="text-center mt-[30vh]">
+        <div class="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center text-3xl font-black mx-auto mb-6">
+            ✓
+        </div>
+        <h2 id="success-title" class="text-2xl font-bold uppercase tracking-widest mb-2"></h2>
+        <p id="success-sub" class="text-[11px] text-white/40 uppercase tracking-widest"></p>
+    </div>
+</div>
+<div id="add-guest-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-6">
+                <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-md max-h-[70vh] overflow-hidden flex flex-col animate-in shadow-2xl">
+                    <div class="px-6 py-4 border-b border-white/10 flex justify-between items-center">
+                         <div>
+                            <h3 class="text-lg font-bold capitalize tracking-wide">Add Team Member</h3>
+                            <p class="text-[10px] text-white/40 capitalize tracking-widest">Select another guest for this session</p>
+                         </div>
+                        <button onclick="closeGuestModal()" class="p-2 hover:bg-white/5 rounded-full transition-colors">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div id="guest-gallery" class="p-6 grid grid-cols-2 gap-4 overflow-y-auto">
+                        </div>
+                </div>
+            </div>
+<div id="filter-modal" class="fixed inset-0 z-[1001] hidden">
+            <div class="absolute inset-0" onclick="toggleFilterModal()"></div>
+            
+            <div class="absolute top-24 right-8 bg-black border border-white/10 rounded-xl w-64 overflow-hidden flex flex-col shadow-2xl animate-in pointer-events-auto">
+                <div class="px-5 py-3 border-b border-white/10 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-semibold capitalize tracking-wide">Select Teammates</h3>
+                        <p class="text-[9px] text-white/40 uppercase tracking-widest">Toggle visibility on calendar</p>
+                    </div>
+                    <button onclick="toggleFilterModal()" class="p-2 hover:bg-white/5 rounded-full"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <div id="filter-modal-list" class="p-1 max-h-[240px] overflow-y-auto custom-scrollbar">
+                </div>
+            </div>
+        </div>
+
+        <div id="toast-msg" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest opacity-0 pointer-events-none transition-all duration-300 z-[3000] shadow-2xl translate-y-4">
+            Time slot is not available
+        </div>
+        <div id="tz-toast-msg" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-black border border-white/10 text-white px-6 py-3 rounded-full text-[10px] font-light tracking-wide opacity-0 pointer-events-none transition-all duration-300 z-[3000] shadow-[0_0_20px_rgba(255,255,255,0.05)] translate-y-4">
+            Timezone updated
+        </div>
+
+        <div id="callDetailsModal" class="hidden fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity">
+            <div class="relative w-full max-w-lg bg-[#050505] border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] overflow-hidden">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                     <div class="flex items-center space-x-3">
+                         <h3 class="text-xs font-black uppercase tracking-widest text-white">Call Details</h3>
+                         <div id="cd-live-badge" class="hidden items-center space-x-1.5 bg-black border border-red-500 px-2 py-0.5 rounded font-bold uppercase text-[8px] text-red-500 tracking-widest">
+                             <div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                             <span>Live</span>
+                         </div>
+                     </div>
+                    <button onclick="closeDetailsModal()" class="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <div class="px-6 py-6 space-y-6">
+                    <div id="cd-delete-confirm" class="absolute inset-0 bg-black/60 backdrop-blur-sm z-[4050] hidden flex-col items-center justify-center">
+                        <div class="bg-[#0a0a0a] border border-white/10 p-6 rounded-2xl shadow-2xl text-center w-3/4 max-w-sm">
+                            <p class="text-sm font-bold text-white mb-6">Do you want to delete this meeting?</p>
+                            <div class="flex items-center justify-center gap-4">
+                                <button onclick="executeDeleteMeeting()" class="flex-1 bg-black text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors">Yes</button>
+                                <button onclick="hideDeleteConfirm()" class="flex-1 bg-white text-black px-4 py-2 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-colors">No</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-start justify-between gap-4">
+                            <div id="cd-text-view" class="flex-1">
+                                <h4 id="cd-title" class="text-xl font-bold text-white capitalize tracking-tight mb-1"></h4>
+                                <p id="cd-notes" class="text-xs text-white/60 font-light whitespace-pre-wrap"></p>
+                            </div>
+                            <div id="cd-edit-view" class="flex-1 hidden flex-col gap-2">
+                                <input type="text" id="cd-edit-title" class="w-full bg-black border border-white/20 rounded-lg px-3 py-2 text-lg font-bold text-white focus:outline-none focus:border-white/50 transition-colors">
+                                <textarea id="cd-edit-notes" class="w-full bg-black border border-white/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white/50 transition-colors resize-none h-20 custom-scrollbar" placeholder="Add notes..."></textarea>
+                            </div>
+                            <div id="cd-host-actions" class="hidden items-center gap-1 shrink-0">
+                                <button onclick="toggleEditMode(true)" class="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                                <button onclick="showDeleteConfirm()" class="p-1.5 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                            <div id="cd-edit-actions" class="hidden items-center gap-1 shrink-0">
+                                <button onclick="saveMeetingEdits()" class="p-1.5 text-white hover:bg-white/10 rounded-lg transition-colors"><i data-lucide="check" class="w-5 h-5"></i></button>
+                                <button onclick="toggleEditMode(false)" class="p-1.5 text-white hover:bg-white/10 rounded-lg transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-6">
+                            <div class="p-4 bg-white/[0.03] border border-white/10 rounded-xl">
+                                <p class="text-[9px] text-white/40 uppercase tracking-widest mb-1">Date</p>
+                                <p id="cd-date" class="text-xs font-bold text-white tracking-wide"></p>
+                            </div>
+                            <div class="p-4 bg-white/[0.03] border border-white/10 rounded-xl">
+                                <p class="text-[9px] text-white/40 uppercase tracking-widest mb-1">Time</p>
+                                <p id="cd-time" class="text-xs font-bold text-white tracking-wide"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h5 class="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3 border-b border-white/10 pb-2">Participants</h5>
+                        <div id="cd-participants-list" class="space-y-3 max-h-40 overflow-y-auto pr-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    
+<script>
+    function showSuccessScreen(title, sub) {
+        const overlay = document.getElementById('success-overlay');
+        
+        document.getElementById('success-title').innerText = title;
+        document.getElementById('success-sub').innerText = sub;
+        
+        // Show Overlay
+        overlay.classList.remove('pointer-events-none');
+        overlay.style.opacity = "1";
+        // Optional: Add a slight scale or blur to mainContent here if desired to match the 'impact'
+
+        // Hide after 2.5 seconds - Matches Availability page exactly
+        setTimeout(() => {
+            overlay.style.opacity = "0";
+            setTimeout(() => {
+                overlay.classList.add('pointer-events-none');
+                
+                // Reset UI state behind the scenes before overlay is fully gone
+                if (!document.getElementById('booking-interface').classList.contains('hidden')) {
+                    closeBooking();
+                }
+            }, 500);
+        }, 2500);
+    }
+
+        // GLOBAL STATE
+        let selectedFilters = [];
+        const today = new Date().getDate();
+        let currentBookingParticipants = [];
+        let authUserId = null;
+        let teamMembers = [];
+        let dbMeetings = [];
+        let dbAvailability = [];
+        const mockCalls = [];
+        let currentUserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        let activeSelectedSlot = null; // Holds the selected slot data
+
+        function showToast(message) {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = message;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 0)';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 1rem)';
+            }, 3000);
+        }
+
+        let globalTimezoneList = [];
+
+        function populateTimezones() {
+            const timezones = Intl.supportedValuesOf('timeZone');
+            const now = new Date();
+            
+            globalTimezoneList = timezones.map(tz => {
+                const parts = tz.split('/');
+                const city = parts[parts.length - 1].replace(/_/g, ' ');
+                const region = parts.length > 1 ? parts[0].replace(/_/g, ' ') : '';
+                
+                let gmtOffset = '';
+                try {
+                    const tzString = now.toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+                    const match = tzString.match(/(GMT[+-]?\d*(?::\d{2})?)/);
+                    if (match) gmtOffset = match[1];
+                } catch(e) {}
+                
+                let label = `${city}`;
+                if (region && region !== city) label += `, ${region}`;
+                if (gmtOffset) label += ` (${gmtOffset})`;
+                
+                return { val: tz, label: label, searchStr: label.toLowerCase() };
+            }).sort((a, b) => a.label.localeCompare(b.label));
+
+            renderTzDropdown();
+            updateTzSelectedText(currentUserTimezone);
+        }
+
+        function renderTzDropdown(filterText = '') {
+            const tzListEl = document.getElementById('tz-list');
+            if(!tzListEl) return;
+            
+            const filtered = filterText 
+                ? globalTimezoneList.filter(t => t.searchStr.includes(filterText.toLowerCase()))
+                : globalTimezoneList;
+
+            tzListEl.innerHTML = filtered.map(tz => 
+                `<div onclick="selectTimezone('${tz.val}')" class="px-3 py-2.5 text-[10px] text-white font-light hover:bg-white/10 rounded-lg cursor-pointer transition-colors ${tz.val === currentUserTimezone ? 'bg-white/10 font-bold' : ''}">${tz.label}</div>`
+            ).join('');
+        }
+
+        function filterTimezones() {
+            const text = document.getElementById('tz-search').value;
+            renderTzDropdown(text);
+        }
+
+        function toggleTzDropdown() {
+            const menu = document.getElementById('tz-dropdown-menu');
+            const chevron = document.getElementById('tz-chevron');
+            if(!menu) return;
+            
+            const isHidden = menu.classList.contains('hidden');
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                chevron.style.transform = 'rotate(-90deg)';
+                document.getElementById('tz-search').focus();
+            } else {
+                menu.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+                document.getElementById('tz-search').value = '';
+                renderTzDropdown(); // reset list
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('tz-dropdown-menu');
+            const btn = document.getElementById('tz-dropdown-btn');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+                toggleTzDropdown();
+            }
+        });
+
+        function updateTzSelectedText(tzValue) {
+            const found = globalTimezoneList.find(t => t.val === tzValue);
+            const el = document.getElementById('tz-selected-text');
+            if(el && found) el.innerText = found.label;
+        }
+
+        async function selectTimezone(newTz) {
+            toggleTzDropdown();
+            currentUserTimezone = newTz;
+            updateTzSelectedText(newTz);
+            
+            if (authUserId) {
+                await supabaseClient.from('profiles').update({ timezone: newTz }).eq('id', authUserId);
+            }
+            renderDashboard();
+            
+            const selectedDateEl = document.querySelector('.booking-day.selected');
+            if (selectedDateEl && !document.getElementById('page-schedule').classList.contains('hidden')) {
+                selectedDateEl.click();
+            }
+            
+            showTzToast(`Timezone updated to ${newTz}`);
+        }
+
+        function showTzToast(msg) {
+            const toast = document.getElementById('tz-toast-msg');
+            if (!toast) return;
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 0)';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 1rem)';
+            }, 3000);
+        }
+
+        // NAVIGATION LOGIC
+        let isCollapsed = false;
+        const sidebar = document.getElementById('sidebar');
+        const sidebarLogoWrapper = document.getElementById('sidebarLogoWrapper');
+        const sidebarLogoImg = document.getElementById('sidebarLogoImg');
+        const sidebarExpandIcon = document.getElementById('sidebarExpandIcon');
+        const collapseBtn = document.getElementById('collapseSidebarBtn');
+        const collapseBtnWrapper = document.getElementById('sidebarCollapseBtnWrapper');
+        const navLabels = document.querySelectorAll('.nav-label');
+
+        function toggleSidebar() {
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) {
+                sidebar.classList.replace('w-52', 'w-16');
+                document.getElementById('success-overlay').style.left = '4rem';
+                collapseBtnWrapper.classList.add('hidden');
+                navLabels.forEach(label => label.classList.add('hidden'));
+                sidebarExpandIcon.classList.remove('hidden');
+            } else {
+                sidebar.classList.replace('w-16', 'w-52');
+                document.getElementById('success-overlay').style.left = '13rem';
+                collapseBtnWrapper.classList.remove('hidden');
+                navLabels.forEach(label => label.classList.remove('hidden'));
+                sidebarExpandIcon.classList.add('hidden');
+                sidebarLogoImg.style.opacity = '1';
+                sidebarExpandIcon.style.opacity = '0';
+            }
+        }
+
+        collapseBtn.addEventListener('click', toggleSidebar);
+        sidebarLogoWrapper.addEventListener('click', () => { if (isCollapsed) toggleSidebar(); });
+        sidebarLogoWrapper.addEventListener('mouseenter', () => {
+            if (isCollapsed) {
+                sidebarLogoImg.style.opacity = '0';
+                sidebarExpandIcon.style.opacity = '1';
+                sidebarExpandIcon.style.display = 'flex';
+            }
+        });
+        sidebarLogoWrapper.addEventListener('mouseleave', () => {
+            if (isCollapsed) {
+                sidebarLogoImg.style.opacity = '1';
+                sidebarExpandIcon.style.opacity = '0';
+                sidebarExpandIcon.style.display = 'none';
+            }
+        });
+
+        function showPage(pageId) {
+            localStorage.setItem('schedulr_active_page', pageId);
+            document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
+            document.getElementById('page-' + pageId).classList.remove('hidden');
+            const title = document.getElementById('page-title');
+            const subtitle = document.getElementById('page-subtitle');
+            const filters = document.getElementById('team-view-filters');
+            filters.classList.add('hidden');
+            
+            if (subtitle) subtitle.classList.add('hidden');
+            
+            const saveBtn = document.getElementById('save-avail-btn');
+            if (saveBtn && pageId !== 'availability') saveBtn.classList.add('hidden');
+            if(pageId === 'dashboard') {
+                const firstName = currentUserProfile && currentUserProfile.full_name ?
+ currentUserProfile.full_name.split(' ')[0] : 'User';
+                title.innerText = `Welcome back, ${firstName}`;
+            }
+            if(pageId === 'availability') title.innerText = "Availability";
+ if(pageId === 'schedule') { 
+    title.innerText = "Schedule a Call"; 
+    if (subtitle) {
+        subtitle.innerText = "SELECT A TEAM MEMBER";
+        subtitle.classList.remove('hidden');
+    }
+    closeBooking();
+ // Ensure we reset to the gallery view
+    initScheduleGallery();
+ }
+            if(pageId === 'teamview') { title.innerText = "Team Schedule";
+ filters.classList.remove('hidden'); initTeamView(); }
+
+            // Update Nav Active States
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                const id = btn.id.replace('nav-', '');
+                if (id === pageId) {
+                    btn.className = "nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full bg-white text-black font-bold shadow-lg shadow-white/10";
+                } else {
+                    btn.className = "nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900";
+                }
+            });
+        }
+
+        // Initialize Supabase safely (Renamed to supabaseClient to avoid naming conflict with the CDN)
+        const SUPABASE_URL = 'https://ikeyqwtrqaqogecvxmiq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrZXlxd3RycWFxb2dlY3Z4bWlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0OTE0NTYsImV4cCI6MjA4OTA2NzQ1Nn0.6Gp5Y8J2T8gzY44gmcYojP8z028T6OVKOzfNT_1cqi8';
+        const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+        let currentUserProfile = null;
+
+        // Make globally accessible to guarantee the HTML button can find it
+        window.handleLogin = async function(e) {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('login-btn');
+            const errorMsg = document.getElementById('login-error');
+            
+            if (!supabaseClient) {
+                errorMsg.innerText = "Database connection failed. Please check internet or disable adblockers.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) return;
+
+            btn.innerText = 'Signing In...';
+            btn.disabled = true;
+            errorMsg.classList.add('hidden');
+
+            try {
+                // 1. Authenticate user using the renamed client
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+         
+               });
+
+                if (authError) throw authError;
+                authUserId = authData.user.id;
+// 2. Fetch profile safely
+                const { data: profileData, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('full_name, role, timezone')
+                    .eq('id', authData.user.id)
+                    .maybeSingle();
+
+                if (profileError) throw profileError;
+
+                // Fallback to email name if the profile row is missing or blocked by RLS
+                currentUserProfile = profileData ||
+                { full_name: email.split('@')[0], role: 'member' };
+                completeLogin();
+            } catch (error) {
+                console.error("Login Error:", error);
+                errorMsg.innerText = error.message || "Invalid login credentials.";
+                errorMsg.classList.remove('hidden');
+                btn.innerText = 'Sign In';
+                btn.disabled = false;
+            }
+        }
+
+        async function handleLogout() {
+            if (!supabaseClient) return;
+            await supabaseClient.auth.signOut();
+            window.location.reload();
+        }
+
+        async function completeLogin() {
+            const loginPage = document.getElementById('page-login');
+            loginPage.classList.add('hidden');
+            loginPage.classList.remove('flex');
+            currentUserTimezone = currentUserProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+            populateTimezones();
+            
+            const name = currentUserProfile?.full_name || 'Unknown User';
+            const role = currentUserProfile?.role || 'MEMBER';
+            const firstName = name.split(' ')[0];
+            const init = firstName.charAt(0).toUpperCase();
+
+            document.getElementById('sidebar-user-name').innerText = name;
+            document.getElementById('sidebar-user-role').innerText = role;
+            document.getElementById('sidebar-user-init').innerText = init;
+
+            await fetchCoreData(true);
+            setupRealtimeSubscriptions();
+
+            initAvailability();
+            initScheduleGallery();
+            renderDashboard(); 
+            const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+            showPage(savedPage);
+            lucide.createIcons();
+        }
+
+        async function fetchCoreData(showSkeleton = false) {
+            if (showSkeleton) {
+                const skeletonHTML = Array(4).fill(`<div class="animate-pulse flex items-center justify-between p-4 bg-white/[0.02] rounded border border-white/5"><div class="flex items-center space-x-4"><div class="w-10 h-10 rounded-full bg-white/5"></div><div><div class="h-3 w-32 bg-white/10 rounded mb-2"></div><div class="h-2 w-20 bg-white/5 rounded"></div></div></div><div class="h-8 w-16 bg-white/5 rounded"></div></div>`).join('');
+                document.getElementById('content-upcoming').innerHTML = skeletonHTML;
+                document.getElementById('content-requests').innerHTML = skeletonHTML;
+                document.getElementById('content-past').innerHTML = skeletonHTML;
+                
+                document.getElementById('daily-schedules').innerHTML = Array(5).fill(`<div class="animate-pulse p-5 bg-white/[0.02] border border-white/5 rounded-xl flex items-center space-x-6"><div class="w-4 h-4 rounded bg-white/10"></div><div class="h-4 w-24 bg-white/10 rounded"></div><div class="flex-1 flex justify-end"><div class="h-8 w-48 bg-white/10 rounded"></div></div></div>`).join('');
+                
+                document.querySelector('#team-gallery .grid').innerHTML = Array(5).fill(`<div class="animate-pulse p-6 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col items-center"><div class="w-16 h-16 rounded-full bg-white/10 mb-4"></div><div class="h-3 w-20 bg-white/10 rounded mb-2"></div><div class="h-2 w-12 bg-white/5 rounded"></div></div>`).join('');
+}
+
+            if(!authUserId) return;
+            
+            // OPTIMIZATION: Fetch all heavy database tables simultaneously to load the app in milliseconds
+            const [profilesRes, availRes, meetsRes] = await Promise.all([
+                supabaseClient.from('profiles').select('*'),
+                supabaseClient.from('availability').select('*').eq('user_id', authUserId),
+                supabaseClient.from('meetings').select('*, meeting_participants ( user_id, response_status, profiles:user_id (full_name) )').order('start_time_utc', { ascending: true })
+            ]);
+
+            const profiles = profilesRes.data;
+            if (profiles) {
+                teamMembers = profiles.map(p => ({
+                    id: p.id,
+                    name: p.full_name || 'Unknown User',
+                    role: p.role || 'Member',
+                    timezone: p.timezone || 'UTC',
+                    init: (p.full_name || 'U').charAt(0).toUpperCase(),
+                    avatar: p.profile_image || null
+                }));
+                const myProfile = profiles.find(p => p.id === authUserId);
+                if (myProfile) {
+                    currentUserProfile.avatar = myProfile.profile_image || null;
+                    const sidebarInit = document.getElementById('sidebar-user-init');
+                    if (myProfile.profile_image) {
+                        sidebarInit.innerText = '';
+                        sidebarInit.style.backgroundImage = `url(${myProfile.profile_image})`;
+                    } else {
+                        sidebarInit.innerText = (myProfile.full_name || 'U').charAt(0).toUpperCase();
+                        sidebarInit.style.backgroundImage = 'none';
+                    }
+                    
+                    // Show Google Sync Modal if tokens are missing
+                    if (!myProfile.google_refresh_token && !myProfile.google_access_token) {
+                        const gModal = document.getElementById('google-sync-modal');
+                        if (gModal) {
+                            gModal.classList.remove('hidden');
+                            gModal.classList.add('flex');
+                        }
+                    }
+                }
+            }
+
+            const avail = availRes.data;
+            if (avail) dbAvailability = avail;
+
+            const meets = meetsRes.data;
+            if (meets) {
+                dbMeetings = meets.filter(m => 
+                    m.host_id === authUserId || 
+                    m.meeting_participants.some(p => p.user_id === authUserId)
+                );
+            }
+        }
+
+        let realtimeTimeout;
+        function setupRealtimeSubscriptions() {
+            const handleDbChange = (payload) => {
+                console.log("Realtime Database Change Detected:", payload);
+                clearTimeout(realtimeTimeout);
+                // Wait 500ms to allow parent and child rows to fully insert before pulling data
+                realtimeTimeout = setTimeout(async () => {
+                    await fetchCoreData(false);
+                    renderDashboard();
+                    
+                    // Update Modal silently if it's currently open so text updates instantly
+                    const modal = document.getElementById('callDetailsModal');
+                    if (modal && !modal.classList.contains('hidden') && window.currentEditingMeetingId) {
+                        const updatedMeeting = dbMeetings.find(m => m.id === window.currentEditingMeetingId);
+                        if (updatedMeeting) {
+                            document.getElementById('cd-title').innerText = updatedMeeting.title || 'Meeting';
+                            const notesEl = document.getElementById('cd-notes');
+                            if (notesEl) {
+                                notesEl.innerText = updatedMeeting.description || '';
+                                notesEl.style.display = updatedMeeting.description ? 'block' : 'none';
+                            }
+                            
+                            // Re-render participants inside the open modal
+                            const list = document.getElementById('cd-participants-list');
+                            if (list) {
+                                const validParticipants = updatedMeeting.meeting_participants.filter(p => p.response_status !== 'declined');
+                                validParticipants.sort((a, b) => {
+                                    if (a.user_id === authUserId) return -1;
+                                    if (b.user_id === authUserId) return 1;
+                                    return 0;
+                                });
+                                list.innerHTML = validParticipants.map(p => {
+                                    const isMe = p.user_id === authUserId;
+                                    const name = isMe ? 'You' : (p.profiles?.full_name || 'Unknown');
+                                    const realNameForInit = isMe ? currentUserProfile.full_name : name;
+                                    const role = teamMembers.find(tm => tm.id === p.user_id)?.role || 'Member';
+                                    const avatar = isMe ? currentUserProfile.avatar : teamMembers.find(tm => tm.id === p.user_id)?.avatar;
+                                    const init = (realNameForInit || 'U').charAt(0).toUpperCase();
+                                    let statusText = '';
+                                    if (p.user_id === updatedMeeting.host_id) statusText = 'Host';
+                                    else if (p.response_status === 'pending') statusText = 'Pending Response';
+                                    
+                                    return `<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 rounded-full bg-white/10 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden bg-cover bg-center" ${avatar ? `style="background-image: url(${avatar})"` : ''}>
+                                                ${avatar ? '' : init}
+                                            </div>
+                                            <div>
+                                                <p class="text-xs font-bold text-white capitalize">${name}</p>
+                                                <p class="text-[9px] text-white/40 capitalize tracking-widest">${role}</p>
+                                            </div>
+                                        </div>
+                                        <span class="text-[9px] font-black uppercase tracking-widest text-white/60">${statusText}</span>
+                                    </div>`;
+                                }).join('');
+                            }
+                        } else {
+                            closeDetailsModal(); // Close modal automatically if meeting gets deleted
+                        }
+                    }
+                    
+                    // Force live visual updates on whichever page is currently open
+                    if (!document.getElementById('page-availability').classList.contains('hidden')) {
+                        initAvailability();
+                    }
+                    if (!document.getElementById('page-teamview').classList.contains('hidden')) {
+                        renderTeamGrid();
+                    }
+                    if (!document.getElementById('page-schedule').classList.contains('hidden')) {
+                        if (document.getElementById('booking-interface').classList.contains('hidden')) {
+                            initScheduleGallery();
+                        } else {
+                            updateBookingUI();
+                        }
+                    }
+                    lucide.createIcons();
+             }, 500);
+            };
+
+            supabaseClient.channel('db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, handleDbChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_participants' }, handleDbChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'availability' }, handleDbChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleDbChange)
+            .subscribe((status, err) => {
+                console.log("Realtime Connection Status:", status);
+                if (err) console.error("Realtime Error:", err);
+            });
+        }
+
+        function refreshSelectedScheduleDate() {
+            // Deprecated: Removing this prevents the realtime fetch from interrupting a user who is currently picking a time!
+        }
+
+        window.onload = async () => {
+            if (!supabaseClient) return lucide.createIcons();
+            // Check if user is already logged in (active session)
+            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const session = sessionData?.session;
+            
+            if (session) {
+                authUserId = session.user.id;
+
+                // Extract Google Tokens if present from a recent OAuth redirect
+                if (session.provider_token || session.provider_refresh_token) {
+                    const updates = {};
+                    if (session.provider_token) updates.google_access_token = session.provider_token;
+                    if (session.provider_refresh_token) updates.google_refresh_token = session.provider_refresh_token;
+                    
+                    if (Object.keys(updates).length > 0) {
+                        await supabaseClient.from('profiles').update(updates).eq('id', authUserId);
+                    }
+                }
+
+                // Immediately show the saved page to prevent flashing while data loads
+                const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+                showPage(savedPage);
+
+                const { data: profileData } = await supabaseClient
+                    .from('profiles')
+                    .select('full_name, role, timezone')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+                
+                // Fallback to email name if the profile row is missing or blocked by RLS
+                currentUserProfile = profileData ||
+                { full_name: session.user.email.split('@')[0], role: 'member' };
+                completeLogin();
+            } else {
+                const loginPage = document.getElementById('page-login');
+                loginPage.classList.remove('hidden');
+                loginPage.classList.add('flex');
+                lucide.createIcons();
+            }
+        };
+
+        // AVAILABILITY LOGIC
+        const timeOptionsHTML = (() => {
+            let opts = "";
+            for (let h = 0; h < 24; h++) {
+                for (let m = 0; m < 60; m += 30) {
+                    const ampm = h >= 12 ? 'PM' : 'AM';
+                    const hr12 = h % 12 === 0 ? 12 : h % 12;
+                    const minStr = m === 0 ? '00' : '30';
+                    const label = `${String(hr12).padStart(2, '0')}:${minStr} ${ampm}`;
+                    const val24 = `${String(h).padStart(2, '0')}:${minStr}`;
+                    opts += `<div onclick="selectTime(this, '${val24}', '${label}', event)" class="px-3 py-2.5 text-[10px] text-white font-light hover:bg-white/10 rounded-lg cursor-pointer transition-colors">${label}</div>`;
+                }
+            }
+            return opts;
+        })();
+
+        function showSaveBtn() {
+            const btn = document.getElementById('save-avail-btn');
+            if(btn) btn.classList.remove('hidden');
+        }
+
+        function createTimeSlotHTML(startVal24 = "09:00", endVal24 = "17:00") {
+            const format12 = (val24) => {
+                const [h, m] = val24.split(':').map(Number);
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const hr12 = h % 12 === 0 ? 12 : h % 12;
+                return `${String(hr12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+            };
+            return `
+                <div class="flex items-center space-x-3 time-slot pointer-events-auto mt-3 w-full justify-end" style="padding-right: 0px;">
+                    <div class="relative inline-block time-picker-wrap">
+                        <div onclick="toggleTimeDropdown(this, event)" class="bg-black border border-white/10 rounded-xl px-4 py-2 text-xs text-white cursor-pointer hover:border-white/30 transition-all w-32 flex justify-between items-center" data-val="${startVal24}">
+                            <span class="time-selected-text pointer-events-none">${format12(startVal24)}</span>
+                            <i data-lucide="chevron-down" class="w-3 h-3 text-white/40 pointer-events-none"></i>
+                        </div>
+                        <div class="hidden absolute top-full right-0 mt-2 w-40 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl z-[5000] max-h-48 overflow-y-auto custom-scrollbar p-1 time-dropdown-menu">
+                            ${timeOptionsHTML}
+                        </div>
+                    </div>
+                    <span class="text-white/20 font-light">—</span>
+                    <div class="relative inline-block time-picker-wrap">
+                        <div onclick="toggleTimeDropdown(this, event)" class="bg-black border border-white/10 rounded-xl px-4 py-2 text-xs text-white cursor-pointer hover:border-white/30 transition-all w-32 flex justify-between items-center" data-val="${endVal24}">
+                            <span class="time-selected-text pointer-events-none">${format12(endVal24)}</span>
+                            <i data-lucide="chevron-down" class="w-3 h-3 text-white/40 pointer-events-none"></i>
+                        </div>
+                        <div class="hidden absolute top-full right-0 mt-2 w-40 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl z-[5000] max-h-48 overflow-y-auto custom-scrollbar p-1 time-dropdown-menu">
+                            ${timeOptionsHTML}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center shrink-0 w-7" style="margin-left: 12px; margin-right: -12px;">
+                        <button onclick="addTimeSlot(this, event)" class="add-slot-btn p-1.5 hover:bg-white/10 rounded-full text-white transition-colors flex items-center justify-center w-7 h-7 shrink-0"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        <button onclick="removeTimeSlot(this, event)" class="remove-slot-btn p-1.5 hover:bg-white/10 rounded-full text-white hover:text-red-400 transition-colors flex items-center justify-center w-7 h-7 shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleTimeDropdown(el, event) {
+            event.stopPropagation();
+            document.querySelectorAll('.time-dropdown-menu').forEach(m => {
+                if (m !== el.nextElementSibling) m.classList.add('hidden');
+            });
+            el.nextElementSibling.classList.toggle('hidden');
+        }
+
+        function selectTime(el, val24, label, event) {
+            event.stopPropagation();
+            const wrap = el.closest('.time-picker-wrap');
+            const displayBtn = wrap.querySelector('[data-val]');
+            displayBtn.setAttribute('data-val', val24);
+            displayBtn.querySelector('.time-selected-text').innerText = label;
+            wrap.querySelector('.time-dropdown-menu').classList.add('hidden');
+            showSaveBtn();
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.time-dropdown-menu').forEach(m => m.classList.add('hidden'));
+        });
+
+        function addTimeSlot(btn, event) {
+            event.stopPropagation();
+            const container = btn.closest('.time-controls-container');
+            const newSlot = document.createElement('div');
+            newSlot.innerHTML = createTimeSlotHTML();
+            container.appendChild(newSlot.firstElementChild);
+            lucide.createIcons();
+            showSaveBtn();
+        }
+
+        function removeTimeSlot(btn, event) {
+            event.stopPropagation();
+            const container = btn.closest('.time-controls-container');
+            if(container.querySelectorAll('.time-slot').length > 1) {
+                btn.closest('.time-slot').remove();
+                showSaveBtn();
+            }
+        }
+
+        function toggleDayFromCard(event, card) {
+            // Strictly ignore clicks on the time dropdowns and action buttons (plus/cross)
+            if(event.target.closest('.time-picker-wrap') || event.target.closest('button')) return;
+            
+            const cb = card.querySelector('.day-toggle');
+            cb.checked = !cb.checked;
+            updateRowState(cb);
+            showSaveBtn();
+        }
+
+        function initAvailability() {
+            const container = document.getElementById('daily-schedules');
+            const daysArr = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const dayMap = { 'sunday':0, 'monday':1, 'tuesday':2, 'wednesday':3, 'thursday':4, 'friday':5, 'saturday':6 };
+            
+            container.innerHTML = ''; 
+            
+            daysArr.forEach(dayName => {
+                const row = document.createElement('div');
+                row.className = "day-row p-5 bg-black border border-white/10 rounded-xl flex items-start justify-between transition-all cursor-pointer";
+                row.setAttribute('data-day', dayName);
+                row.onclick = (e) => toggleDayFromCard(e, row);
+                
+                row.innerHTML = `
+                    <div class="flex items-center space-x-6 w-1/3 mt-3 pointer-events-none">
+                        <input type="checkbox" class="custom-checkbox day-toggle pointer-events-none">
+                        <span class="text-xs font-bold uppercase tracking-widest min-w-[100px]">${dayName.charAt(0).toUpperCase() + dayName.slice(1)}</span>
+                    </div>
+                    <div class="flex flex-col space-y-2 flex-1 items-end time-controls-container pb-1 pointer-events-auto w-full"></div>
+                `;
+                container.appendChild(row);
+
+                const cb = row.querySelector('.day-toggle');
+                const tContainer = row.querySelector('.time-controls-container');
+                const dbEntries = dbAvailability.filter(a => a.day_of_week === dayMap[dayName]).sort((a,b) => a.start_time_local.localeCompare(b.start_time_local));
+                
+                if (dbEntries.length > 0) {
+                    cb.checked = true;
+                    dbEntries.forEach(entry => {
+                        const slotWrapper = document.createElement('div');
+                        slotWrapper.innerHTML = createTimeSlotHTML(entry.start_time_local.substring(0, 5), entry.end_time_local.substring(0, 5));
+                        tContainer.appendChild(slotWrapper.firstElementChild);
+                    });
+                } else {
+                    cb.checked = false;
+                    const slotWrapper = document.createElement('div');
+                    slotWrapper.innerHTML = createTimeSlotHTML();
+                    tContainer.appendChild(slotWrapper.firstElementChild);
+                }
+                
+                updateRowState(cb, true);
+            });
+            lucide.createIcons();
+            
+            const btn = document.getElementById('save-avail-btn');
+            if(btn) btn.classList.add('hidden');
+        }
+
+        async function saveAvailability() {
+            const btn = document.getElementById('save-avail-btn');
+            btn.innerText = "Saving..."; btn.disabled = true;
+
+            const dayMap = { 'sunday':0, 'monday':1, 'tuesday':2, 'wednesday':3, 'thursday':4, 'friday':5, 'saturday':6 };
+            const inserts = [];
+
+            document.querySelectorAll('.day-row').forEach(row => {
+                const cb = row.querySelector('.day-toggle');
+                if (cb.checked) {
+                    const slots = row.querySelectorAll('.time-slot');
+                    slots.forEach(slot => {
+                        const pickers = slot.querySelectorAll('[data-val]');
+                        if(pickers.length === 2) {
+                            inserts.push({
+                                user_id: authUserId,
+                                day_of_week: dayMap[row.getAttribute('data-day')],
+                                start_time_local: pickers[0].getAttribute('data-val') + ':00',
+                                end_time_local: pickers[1].getAttribute('data-val') + ':00'
+                            });
+                        }
+                    });
+                }
+            });
+            
+            try {
+                await supabaseClient.from('availability').delete().eq('user_id', authUserId);
+                if(inserts.length > 0) await supabaseClient.from('availability').insert(inserts);
+                showSuccessScreen('Availability Updated', 'Your working hours have been saved');
+                btn.classList.add('hidden');
+            } catch(e) {
+                console.error(e);
+                alert("Failed to save availability.");
+            } finally {
+                btn.innerText = "Save Changes";
+                btn.disabled = false;
+                await fetchCoreData();
+            }
+        }
+
+        function updateRowState(checkbox, isInit = false) {
+            const row = checkbox.closest('.day-row');
+            const timeControls = row.querySelector('.time-controls-container');
+            let unavailableText = row.querySelector('.unavailable-text');
+            
+            if (checkbox.checked) {
+                row.classList.remove('opacity-40');
+                timeControls.classList.remove('hidden');
+                if (unavailableText) unavailableText.classList.add('hidden');
+            } else {
+                row.classList.add('opacity-40');
+                timeControls.classList.add('hidden');
+                if (!unavailableText) {
+                    unavailableText = document.createElement('div');
+                    unavailableText.className = "flex-1 unavailable-text text-[10px] text-white/40 uppercase tracking-[0.2em] text-right mt-3 pointer-events-none";
+                    unavailableText.innerText = "Closed / Unavailable";
+                    row.appendChild(unavailableText);
+                } else unavailableText.classList.remove('hidden');
+            }
+            if(!isInit) showSaveBtn();
+        }
+
+        function toggleAllDays(checked) {
+            document.querySelectorAll('.day-toggle').forEach(cb => {
+                cb.checked = checked;
+                updateRowState(cb);
+            });
+        }
+
+        // SCHEDULE GALLERY LOGIC
+        function initScheduleGallery() {
+            const container = document.querySelector('#team-gallery .grid');
+            container.innerHTML = '';
+            const others = teamMembers.filter(m => m.id !== authUserId);
+            
+            if(others.length === 0) {
+                container.innerHTML = '<p class="text-[10px] text-white/40 uppercase col-span-full">No other team members found.</p>';
+                return;
+            }
+
+            others.forEach(m => {
+                const card = document.createElement('div');
+                card.className = "p-6 bg-white/[0.03] border border-white/10 rounded-xl hover:bg-white/[0.06] hover:border-white/30 cursor-pointer transition-all group text-center";
+                card.innerHTML = `
+                    <div class="w-16 h-16 rounded-full bg-white text-black font-black text-lg flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform overflow-hidden bg-cover bg-center" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
+                    <h4 class="text-sm font-bold capitalize tracking-tight mb-1">${m.name}</h4>
+                    <p class="text-[9px] text-white/40 capitalize tracking-widest">${m.role}</p>
+                `;
+                card.onclick = () => openBooking(m);
+                container.appendChild(card);
+            });
+        }
+
+        function openBooking(m) {
+            document.getElementById('team-gallery').classList.add('hidden');
+            document.getElementById('booking-interface').classList.remove('hidden');
+            
+            // Initialize participants with the primary person
+            currentBookingParticipants = [{...m}];
+            updateBookingUI();
+            
+            // Reset calendar to the current real-world month
+            currentBookingYear = new Date().getFullYear();
+            currentBookingMonth = new Date().getMonth();
+            initBookingCalendar();
+        }
+
+        function updateBookingUI() {
+            const primary = currentBookingParticipants[0];
+            const wrap = document.getElementById('selected-participants-wrap');
+            const nameList = document.getElementById('guest-list-names');
+            
+            // Clear everything except the "Add Guest" button
+            const addBtn = wrap.querySelector('button[onclick="openGuestModal()"]');
+            addBtn.className = "w-20 h-20 rounded-full border-2 border-dashed border-white/20 bg-white/[0.02] hover:border-white/60 hover:bg-white/10 flex flex-col items-center justify-center transition-all group mb-12 shrink-0";
+            wrap.innerHTML = '';
+            wrap.appendChild(addBtn);
+            nameList.innerHTML = '';
+
+            currentBookingParticipants.forEach((p, index) => {
+                const isPrimary = index === 0;
+                const container = document.createElement('div');
+                container.className = "flex flex-col items-center space-y-2 mb-4 self-start";
+                
+                container.innerHTML = `
+                    <div class="relative group/participant">
+                        <div class="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center font-black text-2xl overflow-hidden bg-cover bg-center" ${p.avatar ? `style="background-image: url(${p.avatar})"` : ''}>
+                            ${p.avatar ? '' : p.init}
+                        </div>
+                        ${!isPrimary ? `
+                        <div onclick="event.stopPropagation(); currentBookingParticipants = currentBookingParticipants.filter(item => item.id !== '${p.id}'); updateBookingUI();" 
+                             class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/participant:opacity-100 transition-all cursor-pointer shadow-xl border border-white/20 z-10">
+                             <i data-lucide="minus" class="w-3 h-3 text-white"></i>
+                        </div>` : ''}
+                    </div>
+                    <div class="text-center mt-2">
+                        <p class="text-[11px] font-bold capitalize tracking-tight truncate w-20">${p.name.split(' ')[0]}</p>
+                        <p class="text-[9px] text-white/40 capitalize tracking-widest">${p.role}</p>
+                    </div>
+                `;
+                
+                wrap.insertBefore(container, addBtn);
+            });
+            lucide.createIcons();
+        }
+
+        function openGuestModal() {
+            const modal = document.getElementById('add-guest-modal');
+            const container = document.getElementById('guest-gallery');
+            container.innerHTML = '';
+            modal.classList.remove('hidden');
+
+            // Filter out people already in the meeting AND the logged-in user
+            const participantIds = currentBookingParticipants.map(p => p.id);
+            const availableGuests = teamMembers.filter(m => !participantIds.includes(m.id) && m.id !== authUserId);
+
+            availableGuests.forEach(m => {
+                const card = document.createElement('div');
+                card.className = "p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-all flex items-center space-x-3";
+                card.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-white/10 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden bg-cover bg-center" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
+                    <div class="flex flex-col text-left">
+                        <h4 class="text-xs font-bold capitalize tracking-tight">${m.name}</h4>
+                        <p class="text-[9px] text-white/40 capitalize tracking-widest">${m.role}</p>
+                    </div>
+                `;
+                card.onclick = () => {
+                    currentBookingParticipants.push(m);
+                    updateBookingUI();
+                    closeGuestModal();
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function closeGuestModal() {
+            document.getElementById('add-guest-modal').classList.add('hidden');
+        }
+        function closeBooking() {
+            document.getElementById('team-gallery').classList.remove('hidden');
+            document.getElementById('booking-interface').classList.add('hidden');
+        }
+
+        // GLOBAL CALENDAR STATE
+        let currentBookingYear = new Date().getFullYear();
+        let currentBookingMonth = new Date().getMonth();
+
+        function changeBookingMonth(dir) {
+            const now = new Date();
+            currentBookingMonth += dir;
+            if (currentBookingMonth > 11) { currentBookingMonth = 0; currentBookingYear++; }
+            if (currentBookingMonth < 0) { currentBookingMonth = 11; currentBookingYear--; }
+            
+            const minMonth = now.getMonth();
+            const minYear = now.getFullYear();
+            
+            // Max 1 month ahead
+            let maxMonth = minMonth + 1;
+            let maxYear = minYear;
+            if (maxMonth > 11) { maxMonth = 0; maxYear++; }
+
+            // Prevent navigating past limits
+            const isBeforeMin = currentBookingYear < minYear || (currentBookingYear === minYear && currentBookingMonth < minMonth);
+            const isAfterMax = currentBookingYear > maxYear || (currentBookingYear === maxYear && currentBookingMonth > maxMonth);
+
+            if (isBeforeMin) {
+                currentBookingYear = minYear;
+                currentBookingMonth = minMonth;
+                return;
+            }
+            if (isAfterMax) {
+                currentBookingYear = maxYear;
+                currentBookingMonth = maxMonth;
+                return;
+            }
+            
+            initBookingCalendar();
+            lucide.createIcons();
+        }
+
+        function initBookingCalendar() {
+            const grid = document.getElementById('b-calendar-days');
+            const monthLabel = document.getElementById('b-calendar-month-label');
+            
+            // Update Header Label
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            if(monthLabel) monthLabel.innerText = `${monthNames[currentBookingMonth]} ${currentBookingYear}`;
+            
+            grid.innerHTML = '';
+            
+            // Calculate dynamic days based on real calendar
+            const firstDay = new Date(currentBookingYear, currentBookingMonth, 1).getDay();
+            const daysInMonth = new Date(currentBookingYear, currentBookingMonth + 1, 0).getDate();
+            
+            // Add empty padding days to align the 1st of the month
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="booking-day empty"></div>`;
+            
+            const now = new Date();
+            const todayDate = now.getDate();
+            const isCurrentMonth = currentBookingYear === now.getFullYear() && currentBookingMonth === now.getMonth();
+
+            for(let i=1; i<=daysInMonth; i++) {
+                const d = document.createElement('div');
+                
+                // Disable past days in current month
+                if (isCurrentMonth && i < todayDate) {
+                    d.className = "booking-day rounded-md opacity-20 cursor-not-allowed";
+                    d.innerText = i;
+                    grid.appendChild(d);
+                    continue;
+                }
+                
+                d.className = "booking-day rounded-md hover:bg-white/10";
+                d.innerText = i;
+                d.onclick = (e) => {
+                    // Remove selection from others and apply to clicked date
+                    document.querySelectorAll('.booking-day').forEach(el => el.classList.remove('selected'));
+                    e.currentTarget.classList.add('selected');
+                    const selectedDate = e.currentTarget.innerText;
+                    const slots = document.getElementById('b-time-slots');
+                    
+                    // Reset Button State
+                    activeSelectedSlot = null;
+                    document.getElementById('send-booking-btn').disabled = true;
+
+                    (async () => {
+                        slots.innerHTML = '<p class="text-[10px] text-white/40 uppercase col-span-full text-center py-4">Finding mutual slots...</p>';
+                        
+                        const year = currentBookingYear; 
+                        const month = currentBookingMonth; 
+                        const day = parseInt(selectedDate);
+                        const viewerLocalDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        
+                        const participants = [
+                            { id: authUserId, tz: currentUserTimezone },
+                            ...currentBookingParticipants.map(p => ({
+                                id: p.id,
+                                tz: teamMembers.find(m => m.id === p.id)?.timezone || 'UTC'
+                            }))
+                        ];
+                        const participantIds = participants.map(p => p.id);
+                        
+                        try {
+                            const baseDateUTC = new Date(Date.UTC(year, month, day, 0, 0, 0));
+                            const minUTC = new Date(baseDateUTC.getTime() - 24 * 60 * 60 * 1000).toISOString();
+                            const maxUTC = new Date(baseDateUTC.getTime() + 48 * 60 * 60 * 1000).toISOString();
+
+                            // OPTIMIZATION: Run independent queries concurrently using Promise.all to drastically reduce load time
+                            const [availRes, partRes, meets1Res] = await Promise.all([
+                                supabaseClient.from('availability').select('*').in('user_id', participantIds),
+                                supabaseClient.from('meeting_participants').select('meeting_id, response_status, user_id').in('user_id', participantIds),
+                                supabaseClient.from('meetings').select('id, start_time_utc, end_time_utc').in('host_id', participantIds).gte('start_time_utc', minUTC).lt('start_time_utc', maxUTC)
+                            ]);
+
+                            const availData = availRes.data;
+                            const partData = partRes.data;
+                            const meets1 = meets1Res.data;
+                            
+                            let validMeetingIds = [];
+                            if (partData) {
+                                validMeetingIds = partData
+                                    .filter(p => p.response_status === 'accepted') // Only block if accepted
+                                    .map(p => p.meeting_id);
+                            }
+                            
+                            if (meets1) {
+                                validMeetingIds.push(...meets1.map(m => m.id));
+                            }
+                            
+                            validMeetingIds = [...new Set(validMeetingIds)];
+                            let allMeetings = [];
+                            if (validMeetingIds.length > 0) {
+                                const { data: mData } = await supabaseClient
+                                    .from('meetings').select('start_time_utc, end_time_utc')
+                                    .in('id', validMeetingIds)
+                                    .gte('start_time_utc', minUTC).lt('start_time_utc', maxUTC);
+                                if (mData) allMeetings = mData;
+                            }
+                            let availableSlots = [];
+                            
+                            // Round current time up to nearest 30 mins
+                            const now = new Date();
+                            const ms = 1000 * 60 * 30; 
+                            const roundedNow = new Date(Math.ceil(now.getTime() / ms) * ms);
+                            
+                            for (let i = 0; i < 144; i++) {
+                                const slotStartUTC = new Date(new Date(minUTC).getTime() + i * 30 * 60000);
+                                const slotEndUTC = new Date(slotStartUTC.getTime() + 30 * 60000);
+
+                                if (slotStartUTC < roundedNow) continue; // Skip past times based on current 30 min block
+
+                                const viewerDateCheck = new Intl.DateTimeFormat('en-CA', {
+                                    timeZone: currentUserTimezone, year: 'numeric', month: '2-digit', day: '2-digit'
+                                }).format(slotStartUTC);
+                                if (viewerDateCheck !== viewerLocalDateStr) continue;
+
+                                const hasCollision = allMeetings.some(m => {
+                                    const mStart = new Date(m.start_time_utc);
+                                    const mEnd = new Date(m.end_time_utc);
+                                    return (slotStartUTC < mEnd && slotEndUTC > mStart);
+                                });
+                                if (hasCollision) continue;
+
+                                let allAvailable = true;
+                                for (const p of participants) {
+                                    const pAvailRules = (availData || []).filter(a => a.user_id === p.id);
+                                    if (pAvailRules.length === 0) { allAvailable = false; break; }
+
+                                    const hostFormat = new Intl.DateTimeFormat('en-US', {
+                                        timeZone: p.tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false
+                                    }).formatToParts(new Date(slotStartUTC.getTime() + 15 * 60000));
+                                    
+                                    const hostDayShort = hostFormat.find(pt => pt.type === 'weekday').value;
+                                    let hostHour = hostFormat.find(pt => pt.type === 'hour').value;
+                                    const hostMin = hostFormat.find(pt => pt.type === 'minute').value;
+                                    if (hostHour === '24') hostHour = '00';
+                                    
+                                    const dayMap = { 'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6 };
+                                    const dayRule = pAvailRules.find(a => a.day_of_week === dayMap[hostDayShort]);
+                                    
+                                    if (!dayRule) { allAvailable = false; break; }
+
+                                    const slotMins = parseInt(hostHour) * 60 + parseInt(hostMin);
+                                    const [sh, sm] = dayRule.start_time_local.split(':').map(Number);
+                                    const [eh, em] = dayRule.end_time_local.split(':').map(Number);
+                                    const startMins = sh * 60 + sm;
+                                    const endMins = eh * 60 + em;
+
+                                    if (startMins <= endMins) {
+                                        if (slotMins < startMins || slotMins >= endMins) { allAvailable = false; break; }
+                                    } else { 
+                                        if (slotMins < startMins && slotMins >= endMins) { allAvailable = false; break; }
+                                    }
+                                }
+
+                                if (allAvailable) {
+                                    const labelFormatter = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' });
+                                    availableSlots.push({
+                                        label: `${labelFormatter.format(slotStartUTC)} - ${labelFormatter.format(slotEndUTC)}`,
+                                        startUTC: slotStartUTC.toISOString(),
+                                        endUTC: slotEndUTC.toISOString()
+                                    });
+                                }
+                            }
+
+                            if (availableSlots.length === 0) {
+                                slots.innerHTML = '<p class="text-[10px] text-white/40 uppercase col-span-full text-center py-4">No mutual slots found</p>';
+                            } else {
+                                slots.innerHTML = availableSlots.map(slot => `
+                                    <button class="time-slot-btn w-full text-left p-3 mb-2 bg-white/[0.03] hover:bg-white/10 border border-white/10 rounded-lg transition-all flex justify-between items-center group"
+                                        data-label="${slot.label}" data-start="${slot.startUTC}" data-end="${slot.endUTC}">
+                                        <span class="text-xs font-bold tracking-widest uppercase">${slot.label}</span>
+                                        <i data-lucide="check-circle-2" class="w-4 h-4 text-white/0 transition-all check-icon"></i>
+                                    </button>
+                                `).join('');
+                                lucide.createIcons();
+                            }
+
+                            slots.querySelectorAll('.time-slot-btn').forEach(btn => {
+                                btn.onclick = () => {
+                                 
+                                    slots.querySelectorAll('.time-slot-btn').forEach(b => {
+                                        b.classList.remove('bg-white', 'text-black', 'hover:bg-white/80');
+                                        b.classList.add('bg-white/[0.03]', 'text-white', 'hover:bg-white/10');
+             
+                                        b.querySelector('.check-icon').classList.replace('text-black', 'text-white/0');
+                                    });
+                                    
+                                    btn.classList.remove('bg-white/[0.03]', 'text-white', 'hover:bg-white/10');
+                                    btn.classList.add('bg-white', 'text-black', 'hover:bg-white/80');
+                                    btn.querySelector('.check-icon').classList.replace('text-white/0', 'text-black');
+                         
+                                    
+                                    activeSelectedSlot = {
+                                        label: btn.getAttribute('data-label'),
+          
+                                        startUTC: btn.getAttribute('data-start'),
+                                        endUTC: btn.getAttribute('data-end')
+                            
+                                    };
+                                    
+                                    validateBookingForm();
+                                };
+                            });
+                        } catch(err) {
+                            console.error(err);
+                            slots.innerHTML = '<p class="text-[10px] text-red-400 uppercase col-span-full text-center py-4">Error loading slots</p>';
+                        }
+                    })();
+                };
+                grid.appendChild(d);
+            }
+        }
+
+        function validateBookingForm() {
+            const titleInput = document.getElementById('call-title-input');
+            const submitBtn = document.getElementById('send-booking-btn');
+            if (submitBtn && titleInput) {
+                submitBtn.disabled = !(activeSelectedSlot && titleInput.value.trim().length > 0);
+            }
+        }
+
+        async function submitBookingRequest() {
+            if (!activeSelectedSlot) return;
+            const btn = document.getElementById('send-booking-btn');
+            btn.innerText = "Processing..."; btn.disabled = true;
+
+            const name = document.getElementById('b-name').innerText;
+            const customTitle = document.getElementById('call-title-input').value.trim();
+            const notesEl = document.getElementById('call-notes-input');
+            const callNotes = notesEl ? notesEl.value.trim() : '';
+            const finalTitle = customTitle || (currentBookingParticipants.length > 1 ? 'Group Session' : 'Meeting with ' + name);
+            const otherNames = currentBookingParticipants.map(p => p.name.split(' ')[0]).join(', ');
+
+            try {
+                // The Database Trigger will automatically reject this insert if there is an overlap!
+                const { data: meetData, error: meetErr } = await supabaseClient
+                    .from('meetings').insert([{
+                        host_id: authUserId, title: finalTitle, description: callNotes, start_time_utc: activeSelectedSlot.startUTC, end_time_utc: activeSelectedSlot.endUTC
+                    }]).select().single();
+                
+                if (meetErr) {
+                    if (meetErr.message.includes('Time slot is no longer available')) {
+                        showToast("Time slot is no longer available. Please select another.");
+                        document.querySelector('.booking-day.selected').click(); // Refresh slots
+                        throw new Error('Overlap');
+                    }
+                    throw meetErr;
+                }
+
+                const participantInserts = [
+                    { meeting_id: meetData.id, user_id: authUserId, response_status: 'accepted' },
+                    ...currentBookingParticipants.map(p => ({
+                        meeting_id: meetData.id, user_id: p.id, response_status: 'pending'
+                    }))
+                ];
+                const { error: pErr } = await supabaseClient.from('meeting_participants').insert(participantInserts);
+                if (pErr) throw pErr;
+
+                closeBooking();
+                showSuccessScreen('Booking Sent', `Request submitted to ${otherNames}`);
+                
+                // Immediately refresh state behind the scenes for the sender
+                await fetchCoreData(false);
+                renderDashboard();
+            } catch(e) {
+                console.error(e);
+                if(e.message !== 'Overlap') alert("Failed to book.");
+            } finally {
+                btn.innerText = "Send Booking Request";
+            }
+        }
+
+        // TEAM VIEW LOGIC
+        function toggleFilterModal() {
+            const modal = document.getElementById('filter-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) renderFilterList();
+            lucide.createIcons();
+        }
+
+        function renderFilterList() {
+            const list = document.getElementById('filter-modal-list');
+            list.innerHTML = '';
+            
+            teamMembers.forEach(m => {
+                const isActive = selectedFilters.includes(m.id);
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between p-2 px-3 rounded-lg cursor-pointer transition-all ${isActive ? 'bg-white/10' : 'hover:bg-white/5'}`;
+                item.onclick = () => {
+                    if (selectedFilters.includes(m.id)) {
+                        selectedFilters = selectedFilters.filter(id => id !== m.id);
+                    } else {
+                        selectedFilters.push(m.id);
+                    }
+                    renderFilterList(); // Refresh list state
+                    renderTeamGrid();   // Update calendar
+                    
+                    // Update count badge
+                    const countBadge = document.getElementById('active-filter-count');
+                    countBadge.innerText = selectedFilters.length;
+                    countBadge.classList.toggle('hidden', selectedFilters.length === 0);
+                };
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold overflow-hidden bg-cover bg-center shrink-0" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
+                        <span class="text-xs font-bold capitalize tracking-tight">${m.name}</span>
+                    </div>
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isActive ? 'bg-white border-white' : 'border-white/20'}">
+                        ${isActive ? '<i data-lucide="check" class="w-3 h-3 text-black"></i>' : ''}
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        let currentTeamYear = new Date().getFullYear();
+        let currentTeamMonth = new Date().getMonth();
+
+        function changeTeamMonth(dir) {
+            const now = new Date();
+            const minMonth = now.getMonth() - 1 < 0 ? 11 : now.getMonth() - 1;
+            const minYear = now.getMonth() - 1 < 0 ? now.getFullYear() - 1 : now.getFullYear();
+            
+            const maxMonth = now.getMonth() + 1 > 11 ? 0 : now.getMonth() + 1;
+            const maxYear = now.getMonth() + 1 > 11 ? now.getFullYear() + 1 : now.getFullYear();
+
+            currentTeamMonth += dir;
+            if (currentTeamMonth > 11) { currentTeamMonth = 0; currentTeamYear++; }
+            else if (currentTeamMonth < 0) { currentTeamMonth = 11; currentTeamYear--; }
+            
+            // Constrain
+            const targetTime = new Date(currentTeamYear, currentTeamMonth, 1).getTime();
+            const minTime = new Date(minYear, minMonth, 1).getTime();
+            const maxTime = new Date(maxYear, maxMonth, 1).getTime();
+            
+            if (targetTime < minTime) { currentTeamYear = minYear; currentTeamMonth = minMonth; }
+            if (targetTime > maxTime) { currentTeamYear = maxYear; currentTeamMonth = maxMonth; }
+
+            renderTeamGrid();
+        }
+
+        function initTeamView() {
+            const now = new Date();
+            currentTeamYear = now.getFullYear();
+            currentTeamMonth = now.getMonth();
+            const countBadge = document.getElementById('active-filter-count');
+            countBadge.classList.add('hidden');
+            renderTeamGrid();
+        }
+
+        function renderTeamGrid() {
+            const grid = document.getElementById('team-grid');
+            const monthLabel = document.getElementById('team-month-label');
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            if (monthLabel) monthLabel.innerText = `${monthNames[currentTeamMonth]} ${currentTeamYear}`;
+            grid.innerHTML = '';
+            
+            const firstDay = new Date(currentTeamYear, currentTeamMonth, 1).getDay();
+            const daysInMonth = new Date(currentTeamYear, currentTeamMonth + 1, 0).getDate();
+            const now = new Date();
+            const isCurrentMonth = currentTeamYear === now.getFullYear() && currentTeamMonth === now.getMonth();
+            const todayDate = now.getDate();
+
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="team-day-cell empty bg-black"></div>`;
+            
+            for(let i=1; i<=daysInMonth; i++) {
+                const isPast = (currentTeamYear < now.getFullYear()) || 
+                               (currentTeamYear === now.getFullYear() && currentTeamMonth < now.getMonth()) ||
+                               (isCurrentMonth && i < todayDate);
+
+                // Find calls for this specific day
+                const dayStartStr = `${currentTeamYear}-${String(currentTeamMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                
+                let dayCalls = dbMeetings.filter(m => {
+                    const localStartStr = new Intl.DateTimeFormat('en-CA', { timeZone: currentUserTimezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(m.start_time_utc));
+                    return localStartStr === dayStartStr;
+                });
+
+                // Filter by selected team members if active
+                if (selectedFilters.length > 0) {
+                    dayCalls = dayCalls.filter(c => {
+                        const participants = c.meeting_participants.map(p => p.user_id);
+                        if (!participants.includes(c.host_id)) participants.push(c.host_id);
+                        return participants.some(pId => selectedFilters.includes(pId));
+                    });
+                }
+
+                // Sort calls by start time
+                dayCalls.sort((a, b) => new Date(a.start_time_utc) - new Date(b.start_time_utc));
+
+                const cell = document.createElement('div');
+                cell.className = `team-day-cell bg-black border-[0.5px] border-white/10 group cursor-pointer transition-all ${isPast ? 'opacity-50' : ''} hover:border-white/30`;
+                
+                // Call Cards rendering
+                const callCardsHTML = dayCalls.map(c => {
+                    return `<div class="bg-black border border-white/20 rounded-md p-1.5 mb-1 flex items-center gap-1.5 overflow-hidden w-full">
+                                <div class="w-1.5 h-1.5 rounded-full bg-white shrink-0"></div>
+                                 <span class="text-[9px] text-white whitespace-nowrap overflow-hidden text-ellipsis capitalize">${c.title || 'Meeting'}</span>
+                            </div>`;
+                }).join('');
+
+                cell.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold ${isPast ? 'text-white/40' : 'text-white'}">${i}</span>
+                    </div>
+                    <div class="flex flex-col">${callCardsHTML}</div>
+                `;
+                cell.onclick = () => {
+                    document.querySelectorAll('.team-day-cell').forEach(el => {
+                        el.classList.remove('ring-1', 'ring-white', 'border-white');
+                    });
+                    cell.classList.add('ring-1', 'ring-white', 'border-white');
+                    openCallList(currentTeamYear, currentTeamMonth, i, dayCalls);
+                };
+                grid.appendChild(cell);
+            }
+            lucide.createIcons();
+        }
+
+        function openCallList(year, month, day, calls) {
+            const sidelist = document.getElementById('call-sidelist');
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('side-date-title').innerText = `${monthNames[month]} ${day}, ${year}`;
+            sidelist.classList.remove('hidden');
+            setTimeout(() => { sidelist.style.width = "400px"; sidelist.style.opacity = "1"; }, 10);
+            
+            const liveWrapper = document.getElementById('live-calls-wrapper');
+            const upcomingWrapper = document.getElementById('upcoming-calls-wrapper');
+            const pastWrapper = document.getElementById('past-calls-wrapper');
+            
+            liveWrapper.innerHTML = '';
+            upcomingWrapper.innerHTML = '';
+            pastWrapper.innerHTML = '';
+            
+            if (!calls.length) {
+                upcomingWrapper.innerHTML = '<p class="text-center mt-20 text-[9px] text-white/20 uppercase">No sessions recorded</p>';
+                return;
+            }
+
+            const now = new Date();
+            let liveCards = '', upcomingCards = '', pastCards = '';
+
+            calls.forEach(c => {
+                const meetStart = new Date(c.start_time_utc);
+                const meetEnd = new Date(c.end_time_utc);
+                const isPast = meetEnd < now;
+                const isLive = now >= meetStart && now <= meetEnd;
+                const jsonStr = encodeURIComponent(JSON.stringify(c));
+                
+                const timeStr = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart) + ' - ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetEnd);
+                
+                const cardHTML = `
+                    <div class="bg-black border border-white/20 rounded-xl p-3 mb-3">
+                        <div class="flex flex-col items-start mb-0">
+                            <h4 class="text-sm font-semibold text-white capitalize tracking-tight">${c.title || 'Meeting'}</h4>
+                            <span class="text-[10px] font-medium text-white/60 capitalize tracking-wide mt-0.5">${timeStr}</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-2.5">
+                             <p class="text-[9px] text-white font-light uppercase tracking-widest">${c.meeting_participants.length + 1} Participants</p>
+                            <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+                        </div>
+                    </div>
+                `;
+
+                if (isLive) liveCards += cardHTML;
+                else if (isPast) pastCards += cardHTML;
+                else upcomingCards += cardHTML;
+            });
+
+            if (liveCards) {
+                liveWrapper.innerHTML = `
+                    <div class="flex items-center space-x-2 mb-3"><div class="live-dot w-2 h-2 rounded-full"></div><span class="text-[11px] text-red-500 font-bold capitalize tracking-wide">Live</span></div>
+                    ${liveCards}
+                    <div class="h-[1px] bg-white/10 my-6"></div>
+                `;
+            }
+            if (upcomingCards) {
+                upcomingWrapper.innerHTML = `
+                    <div class="mb-3"><span class="text-[11px] text-white font-bold capitalize tracking-wide">Upcoming</span></div>
+                    ${upcomingCards}
+                    ${pastCards ? '<div class="h-[1px] bg-white/10 my-6"></div>' : ''}
+                `;
+            }
+            if (pastCards) {
+                pastWrapper.innerHTML = `
+                    <div class="mb-3"><span class="text-[11px] text-white/40 font-bold capitalize tracking-wide">Past</span></div>
+                    ${pastCards}
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function closeCallList() {
+            const sidelist = document.getElementById('call-sidelist');
+            sidelist.style.width = "0"; sidelist.style.opacity = "0";
+            setTimeout(() => sidelist.classList.add('hidden'), 400);
+        }
+
+        function switchTab(tab) {
+            const tabs = ['upcoming', 'requests', 'past'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const content = document.getElementById(`content-${t}`);
+                const isActive = t === tab;
+                btn.classList.toggle('tab-active', isActive);
+                btn.classList.toggle('text-white/30', !isActive);
+                content.classList.toggle('hidden', !isActive);
+            });
+        }
+
+function renderDashboard() {
+            if(window.dashboardInterval) clearInterval(window.dashboardInterval);
+            const upcomingContainer = document.getElementById('content-upcoming');
+            const requestContainer = document.getElementById('content-requests');
+            const pastContainer = document.getElementById('content-past');
+
+            const now = new Date();
+            let upcomings = [], requests = [], pasts = [];
+            dbMeetings.forEach(m => {
+                const meetStart = new Date(m.start_time_utc);
+                const meetEnd = new Date(m.end_time_utc);
+                const isPast = meetEnd < now;
+                const isLive = now >= meetStart && now <= meetEnd;
+                const amIHost = m.host_id === authUserId;
+                const myParticipantRecord = m.meeting_participants.find(p => p.user_id === authUserId);
+                
+                const hostParticipant = m.meeting_participants.find(p => p.user_id === m.host_id);
+                const hostName = hostParticipant?.profiles?.full_name || 'Unknown';
+
+                const hasPendingParticipants = m.meeting_participants.some(p => p.response_status === 'pending');
+                const guestParticipants = m.meeting_participants.filter(p => p.user_id !== m.host_id);
+                const allDeclined = guestParticipants.length > 0 && guestParticipants.every(p => p.response_status === 'declined');
+                
+                const timeStr = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart) + ' - ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetEnd);
+                
+                const localDateNum = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, day: 'numeric' }).format(meetStart));
+                const localMonthAbbr = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, month: 'short' }).format(meetStart);
+                
+                const diffMs = meetStart - now;
+                const under24h = diffMs > 0 && diffMs <= 24 * 60 * 60 * 1000;
+
+                const itemObj = {
+                    id: m.id, title: m.title || 'Meeting', time: timeStr, date: localDateNum, month: localMonthAbbr,
+                    host: hostName,
+                    hasPending: hasPendingParticipants,
+                    myStatus: myParticipantRecord ? myParticipantRecord.response_status : null,
+                    isHost: amIHost, startUTC: m.start_time_utc, isLive: isLive, under24h: under24h, allDeclined: allDeclined, fullRecord: m
+                };
+                
+                if (isPast) { pasts.push(itemObj); } 
+                else if (!amIHost && itemObj.myStatus === 'pending') { requests.push(itemObj); } 
+                else if (amIHost || itemObj.myStatus === 'accepted') { upcomings.push(itemObj); }
+            });
+
+            // 1. Render Upcoming
+            if(upcomings.length === 0) upcomingContainer.innerHTML = '<p class="text-center py-10 text-[10px] text-white/20 uppercase tracking-widest">No upcoming sessions</p>';
+            else upcomingContainer.innerHTML = upcomings.map(s => {
+                const jsonStr = encodeURIComponent(JSON.stringify(s.fullRecord));
+                let borderClass = 'border-white/5';
+                if (s.isLive || s.under24h) borderClass = 'border-white/20';
+
+ return `
+                <div class="relative p-4 bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex items-center justify-between">
+                    ${s.isHost && s.allDeclined ? `<button onclick="deleteMeeting('${s.id}')" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
+                    <div class="flex items-center space-x-4 w-[35%]">
+      
+                  <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
+                            <span class="text-[8px] uppercase leading-none mt-0.5">${s.month}</span>
+                            <span class="text-sm leading-none">${s.date}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${s.title}</h4>
+       
+                          ${s.isHost && s.allDeclined ?
+'<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Request Declined</span>' : ''}
+                                ${s.isLive ?
+'<div class="flex items-center space-x-1.5 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
+                            </div>
+                            <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${s.time}</p>
+                            <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${s.host}</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex justify-center px-2">
+                         <div class="countdown-timer text-[11px] text-white font tracking-wide capitalize text-center" data-start="${s.startUTC}"></div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 w-[30%] pr-4 shrink-0">
+                        ${(s.isHost && s.hasPending && !s.allDeclined) ?
+'<span class="text-[8px] text-white/30 font-bold uppercase mr-2 text-right">Pending Response</span>' : ''}
+                        ${(!s.hasPending && !s.allDeclined) ?
+`<button class="bg-white text-black border border-white text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Join</button>` : ''}
+                        <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // 2. Render Requests
+            document.getElementById('request-count').innerText = requests.length;
+            if(requests.length === 0) requestContainer.innerHTML = '<p class="text-center py-10 text-[10px] text-white/20 uppercase tracking-widest">No new requests</p>';
+            else requestContainer.innerHTML = requests.map(r => {
+                const jsonStr = encodeURIComponent(JSON.stringify(r.fullRecord));
+                return `
+                <div class="relative flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/[0.08] transition-all group">
+                    <div class="flex items-center space-x-4 w-[35%]">
+       
+                 <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border border-white/20 flex flex-col shrink-0 items-center justify-center font-black">
+                            <span class="text-[8px] uppercase leading-none mt-0.5">${r.month}</span>
+                            <span class="text-sm leading-none">${r.date}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${r.title}</h4>
+                             <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${r.time}</p>
+                            <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${r.host}</p>
+                        </div>
+                    </div>
+                     <div class="flex-1 flex justify-center px-2">
+                        <div class="countdown-timer text-[11px] text-white font tracking-wide capitalize text-center" data-start="${r.startUTC}"></div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1.5 w-[30%] shrink-0 pr-2">
+                         <div class="flex gap-2 w-full max-w-[120px]">
+                            <button onclick="handleRequest('${r.id}', 'accepted')" class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Accept</button>
+                            <button onclick="handleRequest('${r.id}', 'declined')" class="flex-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 hover:text-white text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest transition-colors">Decline</button>
+                        </div>
+                        <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors w-full max-w-[120px]">Details</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // 3. Render Past
+            if(pasts.length === 0) pastContainer.innerHTML = '<p class="text-center py-10 text-[10px] text-white/20 uppercase tracking-widest">No past sessions</p>';
+            else pastContainer.innerHTML = pasts.map(p => {
+                const jsonStr = encodeURIComponent(JSON.stringify(p.fullRecord));
+                return `
+                <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 opacity-40 grayscale transition-all hover:opacity-100 hover:grayscale-0 group">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white/40 border border-white/40 flex flex-col shrink-0 items-center justify-center font-black">
+                            <span class="text-[8px] uppercase leading-none mt-0.5">${p.month}</span>
+                            <span class="text-sm leading-none">${p.date}</span>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-sm text-white/40 capitalize tracking-tight group-hover:text-white">${p.title}</h4>
+                             <p class="text-[10px] text-white/20 uppercase tracking-widest font-medium group-hover:text-white/40">${p.time}</p>
+                        </div>
+                    </div>
+                    <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+                </div>`;
+            }).join('');
+            
+            window.dashboardInterval = setInterval(updateCountdowns, 60000);
+            updateCountdowns();
+            lucide.createIcons();
+        }
+
+        function openDetailsModal(jsonStr) {
+            const m = JSON.parse(decodeURIComponent(jsonStr));
+            const modal = document.getElementById('callDetailsModal');
+            document.getElementById('cd-title').innerText = m.title || 'Meeting';
+            
+            const notesEl = document.getElementById('cd-notes');
+            if (notesEl) {
+                notesEl.innerText = m.description || '';
+                notesEl.style.display = m.description ? 'block' : 'none';
+            }
+
+            window.currentEditingMeetingId = m.id;
+            const hostActions = document.getElementById('cd-host-actions');
+            if (hostActions) {
+                if (m.host_id === authUserId) {
+                    hostActions.classList.remove('hidden');
+                    hostActions.classList.add('flex');
+                } else {
+                    hostActions.classList.add('hidden');
+                    hostActions.classList.remove('flex');
+                }
+            }
+            if(typeof toggleEditMode === 'function') toggleEditMode(false);
+            if(typeof hideDeleteConfirm === 'function') hideDeleteConfirm();
+            
+            const meetStart = new Date(m.start_time_utc);
+            const meetEnd = new Date(m.end_time_utc);
+            const now = new Date();
+            const isLive = now >= meetStart && now <= meetEnd;
+            
+            const badge = document.getElementById('cd-live-badge');
+            if (badge) {
+                if (isLive) badge.classList.replace('hidden', 'flex');
+                else badge.classList.replace('flex', 'hidden');
+            }
+
+            document.getElementById('cd-date').innerText = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).format(meetStart);
+            document.getElementById('cd-time').innerText = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart) + ' - ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetEnd);
+            const list = document.getElementById('cd-participants-list');
+            
+            const validParticipants = m.meeting_participants.filter(p => p.response_status !== 'declined');
+            validParticipants.sort((a, b) => {
+                if (a.user_id === authUserId) return -1;
+                if (b.user_id === authUserId) return 1;
+                return 0;
+            });
+
+            list.innerHTML = validParticipants.map(p => {
+                const isMe = p.user_id === authUserId;
+                const name = isMe ? 'You' : (p.profiles?.full_name || 'Unknown');
+                const realNameForInit = isMe ? currentUserProfile.full_name : name;
+                const role = teamMembers.find(tm => tm.id === p.user_id)?.role || 'Member';
+                const avatar = isMe ? currentUserProfile.avatar : teamMembers.find(tm => tm.id === p.user_id)?.avatar;
+                const init = (realNameForInit || 'U').charAt(0).toUpperCase();
+                let statusText = '';
+                if (p.user_id === m.host_id) statusText = 'Host';
+                else if (p.response_status === 'pending') statusText = 'Pending Response';
+                
+                return `<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-white/10 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden bg-cover bg-center" ${avatar ? `style="background-image: url(${avatar})"` : ''}>
+                            ${avatar ? '' : init}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white capitalize">${name}</p>
+                            <p class="text-[9px] text-white/40 capitalize tracking-widest">${role}</p>
+                        </div>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-white/60">${statusText}</span>
+                </div>`;
+            }).join('');
+            
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function toggleEditMode(isEditing) {
+            const textView = document.getElementById('cd-text-view');
+            const editView = document.getElementById('cd-edit-view');
+            const hostActions = document.getElementById('cd-host-actions');
+            const editActions = document.getElementById('cd-edit-actions');
+            
+            if (isEditing) {
+                textView.classList.add('hidden');
+                editView.classList.remove('hidden');
+                editView.classList.add('flex');
+                
+                hostActions.classList.add('hidden');
+                hostActions.classList.remove('flex');
+                editActions.classList.remove('hidden');
+                editActions.classList.add('flex');
+                
+                document.getElementById('cd-edit-title').value = document.getElementById('cd-title').innerText;
+                document.getElementById('cd-edit-notes').value = document.getElementById('cd-notes').innerText;
+            } else {
+                textView.classList.remove('hidden');
+                editView.classList.add('hidden');
+                editView.classList.remove('flex');
+                
+                if(window.currentEditingMeetingId) {
+                    const m = dbMeetings.find(meeting => meeting.id === window.currentEditingMeetingId);
+                    if(m && m.host_id === authUserId) {
+                        hostActions.classList.remove('hidden');
+                        hostActions.classList.add('flex');
+                    }
+                }
+                editActions.classList.add('hidden');
+                editActions.classList.remove('flex');
+            }
+        }
+
+        async function saveMeetingEdits() {
+            const newTitle = document.getElementById('cd-edit-title').value.trim();
+            const newNotes = document.getElementById('cd-edit-notes').value.trim();
+            const mId = window.currentEditingMeetingId;
+            if(!mId || !newTitle) return;
+
+            try {
+                // Optimistically update UI instantly
+                document.getElementById('cd-title').innerText = newTitle;
+                document.getElementById('cd-notes').innerText = newNotes;
+                document.getElementById('cd-notes').style.display = newNotes ? 'block' : 'none';
+                toggleEditMode(false);
+                
+                const mIndex = dbMeetings.findIndex(m => m.id === mId);
+                if(mIndex > -1) {
+                    dbMeetings[mIndex].title = newTitle;
+                    dbMeetings[mIndex].description = newNotes;
+                }
+                
+                // Instantly re-render lists to reflect new text
+                renderDashboard();
+                if (!document.getElementById('page-teamview').classList.contains('hidden')) renderTeamGrid();
+
+                // Send to Database
+                await supabaseClient.from('meetings').update({ title: newTitle, description: newNotes }).eq('id', mId);
+            } catch (e) {
+                console.error("Failed to save meeting edit", e);
+            }
+        }
+
+        function showDeleteConfirm() {
+            const dc = document.getElementById('cd-delete-confirm');
+            dc.classList.remove('hidden');
+            dc.classList.add('flex');
+        }
+
+        function hideDeleteConfirm() {
+            const dc = document.getElementById('cd-delete-confirm');
+            dc.classList.add('hidden');
+            dc.classList.remove('flex');
+        }
+
+        async function executeDeleteMeeting() {
+            const mId = window.currentEditingMeetingId;
+            if(!mId) return;
+            hideDeleteConfirm();
+            closeDetailsModal();
+            deleteMeeting(mId); 
+        }
+
+        function closeDetailsModal() { 
+            document.getElementById('callDetailsModal').classList.add('hidden');
+            hideDeleteConfirm();
+            toggleEditMode(false);
+        }
+
+        async function deleteMeeting(id) {
+            // Optimistic UI Update: Instantly remove from view
+            dbMeetings = dbMeetings.filter(m => m.id !== id);
+            renderDashboard();
+
+            try {
+                await supabaseClient.from('meetings').delete().eq('id', id);
+                await fetchCoreData(false);
+                renderDashboard();
+            } catch(e) { 
+                console.error(e);
+                // Revert on failure
+                await fetchCoreData(false);
+                renderDashboard(); 
+            }
+        }
+
+        function updateCountdowns() {
+            const now = new Date();
+            document.querySelectorAll('.countdown-timer').forEach(el => {
+                const startStr = el.getAttribute('data-start');
+                if(!startStr) return;
+                const start = new Date(startStr);
+                const diffMs = start - now;
+                if (diffMs > 0 && diffMs <= 24 * 60 * 60 * 1000) {
+                    const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+                    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    el.innerText = `Starting In ${hrs} hours and ${mins} minutes`;
+                } else {
+                    el.innerText = '';
+                }
+            });
+        }
+
+        async function handleRequest(meetingId, action) {
+            // Optimistic UI Update: Instantly change status in local array
+            const meetingIndex = dbMeetings.findIndex(m => m.id === meetingId);
+            if (meetingIndex > -1) {
+                const partIndex = dbMeetings[meetingIndex].meeting_participants.findIndex(p => p.user_id === authUserId);
+                if (partIndex > -1) dbMeetings[meetingIndex].meeting_participants[partIndex].response_status = action;
+            }
+            renderDashboard();
+
+            try {
+                const { error } = await supabaseClient.from('meeting_participants').update({ response_status: action }).eq('meeting_id', meetingId).eq('user_id', authUserId);
+                if (error) throw error;
+                if(action === 'accepted') showSuccessScreen('Request Accepted', 'Added to your schedule');
+                
+                await fetchCoreData(false);
+                renderDashboard();
+            } catch(e) {
+                console.error(e);
+                alert("Could not update status");
+                await fetchCoreData(false);
+                renderDashboard();
+            }
+        }
+
+        let cropperInstance = null;
+        function openProfileModal() {
+            const ov = document.getElementById('modal-overlay');
+            ov.classList.remove('hidden');
+            ov.classList.add('flex');
+            setTimeout(() => ov.classList.replace('opacity-0', 'opacity-100'), 10);
+            
+            document.getElementById('modal-user-name').innerText = currentUserProfile.full_name;
+            document.getElementById('modal-user-role').innerText = currentUserProfile.role;
+            
+            const aImg = document.getElementById('avatar-image');
+            const aIni = document.getElementById('avatar-initials');
+            
+            if (currentUserProfile.avatar) {
+                aImg.src = currentUserProfile.avatar;
+                aImg.classList.remove('hidden');
+                aIni.classList.add('hidden');
+            } else {
+                aImg.classList.add('hidden');
+                aIni.classList.remove('hidden');
+                aIni.innerText = currentUserProfile.full_name.charAt(0).toUpperCase();
+            }
+        }
+
+        function closeProfileModal() {
+            const ov = document.getElementById('modal-overlay');
+            ov.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => {
+                ov.classList.add('hidden');
+                ov.classList.remove('flex');
+                if(!document.getElementById('crop-view').classList.contains('hidden')) exitCrop();
+            }, 500);
+        }
+
+        function exitCrop() {
+            if(cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+            document.getElementById('crop-view').classList.replace('flex', 'hidden');
+            document.getElementById('profile-view').classList.remove('hidden');
+        }
+
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-overlay') closeProfileModal();
+        });
+
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            if(!e.target.files.length) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('profile-view').classList.add('hidden');
+                document.getElementById('crop-view').classList.replace('hidden', 'flex');
+                const iCrop = document.getElementById('image-to-crop');
+                iCrop.src = ev.target.result;
+                if(cropperInstance) cropperInstance.destroy();
+                cropperInstance = new Cropper(iCrop, {
+                    aspectRatio: 1, viewMode: 3, dragMode: 'move', autoCropArea: 1,
+                    guides: false, center: false, highlight: false, cropBoxMovable: false,
+                    cropBoxResizable: false, toggleDragModeOnDblclick: false, zoomOnWheel: true, wheelZoomRatio: 0.1
+                });
+            };
+            reader.readAsDataURL(e.target.files[0]);
+            e.target.value = '';
+        });
+
+        document.getElementById('zoom-in').addEventListener('click', () => cropperInstance?.zoom(0.1));
+        document.getElementById('zoom-out').addEventListener('click', () => cropperInstance?.zoom(-0.1));
+        document.getElementById('cancel-crop').addEventListener('click', exitCrop);
+        
+        document.getElementById('save-crop').addEventListener('click', async () => {
+            if(!cropperInstance) return;
+            const btn = document.getElementById('save-crop');
+            btn.innerText = "Saving..."; btn.disabled = true;
+            
+            // Compress 60% quality Base64 string natively in the browser before DB sync
+            const base64Image = cropperInstance.getCroppedCanvas({ width: 200, height: 200 }).toDataURL('image/jpeg', 0.6);
+            
+            try {
+                await supabaseClient.from('profiles').update({ profile_image: base64Image }).eq('id', authUserId);
+                
+                currentUserProfile.avatar = base64Image;
+                const aImg = document.getElementById('avatar-image');
+                aImg.src = base64Image;
+                aImg.classList.remove('hidden');
+                document.getElementById('avatar-initials').classList.add('hidden');
+                
+                const sidebarInit = document.getElementById('sidebar-user-init');
+                sidebarInit.innerText = '';
+                sidebarInit.style.backgroundImage = `url(${base64Image})`;
+                
+                exitCrop();
+                await fetchCoreData(false);
+                renderDashboard();
+                if (!document.getElementById('page-schedule').classList.contains('hidden')) {
+                    initScheduleGallery();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Failed to update profile photo.");
+            } finally {
+                btn.innerText = "Apply"; btn.disabled = false;
+            }
+        });
+
+        async function connectGoogleAccount() {
+            try {
+                const { data, error } = await supabaseClient.auth.linkIdentity({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin + window.location.pathname,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent',
+                        },
+                        scopes: 'https://www.googleapis.com/auth/calendar.events'
+                    }
+                });
+                if (error) throw error;
+            } catch (err) {
+                console.error("Google Auth Error:", err);
+                alert(err.message || "Failed to initialize Google connection.");
+            }
+        }
+        
+        function closeGoogleSyncModal() {
+            const gModal = document.getElementById('google-sync-modal');
+            if (gModal) {
+                gModal.classList.add('hidden');
+                gModal.classList.remove('flex');
+            }
+        }
+    </script>
+</body>
+</html>
