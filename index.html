@@ -2545,24 +2545,25 @@ function renderDashboard() {
             }
         });
 
-        async function connectGoogleAccount() {
-            try {
-                const { data, error } = await supabaseClient.auth.linkIdentity({
-                    provider: 'google',
-                    options: {
-                        redirectTo: window.location.origin + window.location.pathname,
-                        queryParams: {
-                            access_type: 'offline',
-                            prompt: 'consent',
-                        },
-                        scopes: 'https://www.googleapis.com/auth/calendar.events'
-                    }
-                });
-                if (error) throw error;
-            } catch (err) {
-                console.error("Google Auth Error:", err);
-                alert(err.message || "Failed to initialize Google connection.");
-            }
+        function connectGoogleAccount() {
+            // THE N8N WAY
+            // REPLACE THESE TWO VARIABLES WITH YOUR ACTUAL DATA
+            const GOOGLE_CLIENT_ID = '761317775108-ab0vqro4cel55ducjdt6rdbln9ch8b2i.apps.googleusercontent.com';
+            const N8N_WEBHOOK_URL = 'https://n8n.norkx.space/webhook/callcutzzz';
+            
+            // We pass the user's ID in the 'state' parameter so n8n knows who this is
+            const state = authUserId; 
+            
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
+                `client_id=${GOOGLE_CLIENT_ID}` +
+                `&redirect_uri=${encodeURIComponent(N8N_WEBHOOK_URL)}` +
+                `&response_type=code` +
+                `&scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar.events')}` +
+                `&access_type=offline` +
+                `&prompt=consent` +
+                `&state=${state}`;
+                
+            window.location.href = authUrl;
         }
         
         function closeGoogleSyncModal() {
