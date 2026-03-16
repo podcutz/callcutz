@@ -1820,6 +1820,20 @@
                 const { error: pErr } = await supabaseClient.from('meeting_participants').insert(participantInserts);
                 if (pErr) throw pErr;
 
+                // TRIGGER N8N WEBHOOK: Fire the 'Meeting Created' workflow silently in the background
+                fetch('https://n8n.norkx.space/webhook/requestsender', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        meeting_id: meetData.id,
+                        host_id: authUserId,
+                        title: finalTitle,
+                        start_time: activeSelectedSlot.startUTC,
+                        end_time: activeSelectedSlot.endUTC,
+                        participants: currentBookingParticipants.map(p => p.id)
+                    })
+                }).catch(err => console.error("Webhook trigger failed:", err));
+
                 closeBooking();
                 showSuccessScreen('Booking Sent', `Request submitted to ${otherNames}`);
                 
