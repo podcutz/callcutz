@@ -1130,6 +1130,18 @@
             // Deprecated: Removing this prevents the realtime fetch from interrupting a user who is currently picking a time!
         }
 
+        // BULLETPROOF TOKEN CATCHER: Intercept the URL hash instantly before the browser or Supabase can clear it
+        let caughtGoogleTokens = null;
+        if (window.location.hash && window.location.hash.includes('provider_token')) {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            if (hashParams.get('provider_token')) {
+                caughtGoogleTokens = {
+                    access: hashParams.get('provider_token'),
+                    refresh: hashParams.get('provider_refresh_token')
+                };
+            }
+        }
+
         window.onload = async () => {
             if (!supabaseClient) return lucide.createIcons();
             // Check if user is already logged in (active session)
@@ -1139,8 +1151,20 @@
             if (session) {
                 authUserId = session.user.id;
 
+                // If we caught tokens on page load, instantly save them to the database
+                if (caughtGoogleTokens) {
+                    const updates = { google_access_token: caughtGoogleTokens.access };
+                    if (caughtGoogleTokens.refresh) updates.google_refresh_token = caughtGoogleTokens.refresh;
+                    
+                    await supabaseClient.from('profiles').update(updates).eq('id', authUserId);
+                    
+                    // Wipe the tokens from the URL so they don't get re-processed if the user refreshes
+                    window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                }
+
                 // Immediately show the saved page to prevent flashing while data loads
-                const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+                const savedPage = localStorage.getItem('schedulr_active_page') ||
+                'dashboard';
                 showPage(savedPage);
 
                 const { data: profileData } = await supabaseClient
