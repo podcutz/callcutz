@@ -2445,6 +2445,18 @@ function renderDashboard() {
             try {
                 const { error } = await supabaseClient.from('meeting_participants').update({ response_status: action }).eq('meeting_id', meetingId).eq('user_id', authUserId);
                 if (error) throw error;
+                
+                // TRIGGER N8N WEBHOOK: Fire the 'Response Handler' workflow silently in the background
+                fetch('https://n8n.norkx.space/webhook/requestacceptors', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        meeting_id: meetingId,
+                        invitee_user_id: authUserId,
+                        action: action
+                    })
+                }).catch(err => console.error("Webhook trigger failed:", err));
+
                 if(action === 'accepted') showSuccessScreen('Request Accepted', 'Added to your schedule');
                 
                 await fetchCoreData(false);
