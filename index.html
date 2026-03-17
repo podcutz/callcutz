@@ -478,7 +478,6 @@
                     </svg>
                     <span>Connect G Account</span>
                 </button>
-                <button onclick="closeGoogleSyncModal()" class="mt-4 text-[10px] text-white/40 uppercase tracking-widest hover:text-white transition-colors">Skip for now</button>
             </div>
         </div>
 
@@ -2125,7 +2124,7 @@ function renderDashboard() {
                     host: hostName,
                     hasPending: hasPendingParticipants,
                     myStatus: myParticipantRecord ? myParticipantRecord.response_status : null,
-                    isHost: amIHost, startUTC: m.start_time_utc, isLive: isLive, under24h: under24h, allDeclined: allDeclined, fullRecord: m
+                    isHost: amIHost, startUTC: m.start_time_utc, isLive: isLive, under24h: under24h, allDeclined: allDeclined, type: m.type, fullRecord: m
                 };
                 
                 if (isPast) { pasts.push(itemObj); } 
@@ -2142,7 +2141,7 @@ function renderDashboard() {
 
  return `
                 <div class="relative p-4 bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex items-center justify-between">
-                    ${s.isHost && s.allDeclined ? `<button onclick="deleteMeeting('${s.id}')" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
+                    ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}')" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
                     <div class="flex items-center space-x-4 w-[35%]">
       
                   <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
@@ -2157,6 +2156,8 @@ function renderDashboard() {
 '<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Request Declined</span>' : ''}
                                 ${s.isLive ?
 '<div class="flex items-center space-x-1.5 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
+                                ${s.type === 'lead' ?
+'<div class="flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
                             </div>
                             <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${s.time}</p>
                             <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${s.host}</p>
@@ -2246,7 +2247,7 @@ function renderDashboard() {
             window.currentEditingMeetingId = m.id;
             const hostActions = document.getElementById('cd-host-actions');
             if (hostActions) {
-                if (m.host_id === authUserId) {
+                if (m.host_id === authUserId && m.type !== 'lead') {
                     hostActions.classList.remove('hidden');
                     hostActions.classList.add('flex');
                 } else {
@@ -2333,7 +2334,7 @@ function renderDashboard() {
                 
                 if(window.currentEditingMeetingId) {
                     const m = dbMeetings.find(meeting => meeting.id === window.currentEditingMeetingId);
-                    if(m && m.host_id === authUserId) {
+                    if(m && m.host_id === authUserId && m.type !== 'lead') {
                         hostActions.classList.remove('hidden');
                         hostActions.classList.add('flex');
                     }
