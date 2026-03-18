@@ -2464,17 +2464,30 @@ function renderDashboard() {
             const mId = window.currentEditingMeetingId;
             if(!mId || !newTitle) return;
             try {
+                const mIndex = dbMeetings.findIndex(m => m.id === mId);
+                if (mIndex === -1) return;
+                
+                const oldTitle = dbMeetings[mIndex].title || '';
+                const oldNotes = dbMeetings[mIndex].description || '';
+                
+                // Check if anything actually changed to prevent redundant webhooks & DB calls
+                const hasChanged = newTitle !== oldTitle || newNotes !== oldNotes;
+
                 // Optimistically update UI instantly
                 document.getElementById('cd-title').innerText = newTitle;
                 document.getElementById('cd-notes').innerText = newNotes;
                 document.getElementById('cd-notes').style.display = newNotes ? 'block' : 'none';
                 toggleEditMode(false);
                 
-                const mIndex = dbMeetings.findIndex(m => m.id === mId);
-                if(mIndex > -1) {
-                    dbMeetings[mIndex].title = newTitle;
-                    dbMeetings[mIndex].description = newNotes;
-                }
+                if (!hasChanged) return; // Exit early if no changes were made
+
+                // Grab start and end times
+                const startTimeUTC = dbMeetings[mIndex].start_time_utc;
+                const endTimeUTC = dbMeetings[mIndex].end_time_utc;
+
+                // Update local state
+                dbMeetings[mIndex].title = newTitle;
+                dbMeetings[mIndex].description = newNotes;
                 
                 // Instantly re-render lists to reflect new text
                 renderDashboard();
@@ -2502,7 +2515,9 @@ function renderDashboard() {
                         host_id: authUserId,
                         accepted_participants: participantIds,
                         new_title: newTitle,
-                        new_notes: newNotes
+                        new_notes: newNotes,
+                        start_time_utc: startTimeUTC,
+                        end_time_utc: endTimeUTC
                     })
                 }).catch(err => console.error("Webhook trigger failed:", err));
 
