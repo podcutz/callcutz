@@ -2254,10 +2254,16 @@ function renderDashboard() {
             }).join('');
 
             // 2. Render Requests
+            const acceptedIntervals = upcomings.map(u => ({start: new Date(u.startUTC).getTime(), end: new Date(u.fullRecord.end_time_utc).getTime()}));
+
             document.getElementById('request-count').innerText = requests.length;
             if(requests.length === 0) requestContainer.innerHTML = '<p class="text-center py-10 text-[10px] text-white/20 uppercase tracking-widest">No new requests</p>';
             else requestContainer.innerHTML = requests.map(r => {
                 const jsonStr = encodeURIComponent(JSON.stringify(r.fullRecord));
+                const rStart = new Date(r.startUTC).getTime();
+                const rEnd = new Date(r.fullRecord.end_time_utc).getTime();
+                const isOccupied = acceptedIntervals.some(interval => rStart < interval.end && rEnd > interval.start);
+
                 return `
                 <div class="relative flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/[0.08] transition-all group">
                     <div class="flex items-center space-x-4 w-[35%]">
@@ -2265,23 +2271,33 @@ function renderDashboard() {
                  <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border border-white/20 flex flex-col shrink-0 items-center justify-center font-black">
                             <span class="text-[8px] uppercase leading-none mt-0.5">${r.month}</span>
                             <span class="text-sm leading-none">${r.date}</span>
+        
                         </div>
                         <div class="min-w-0">
-                            <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${r.title}</h4>
-                             <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${r.time}</p>
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${r.title}</h4>
+                                ${isOccupied ? '<span class="text-[8px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">You Are Already Occupied</span>' : ''}
+                            </div>
+                         
+                            <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${r.time}</p>
                             <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${r.host}</p>
                         </div>
                     </div>
-                     <div class="flex-1 flex justify-center px-2">
+            
+                    <div class="flex-1 flex justify-center px-2">
                         <div class="countdown-timer text-[11px] text-white font tracking-wide capitalize text-center" data-start="${r.startUTC}"></div>
                     </div>
                     <div class="flex flex-col items-end gap-1.5 w-[30%] shrink-0 pr-2">
-                         <div class="flex gap-2 w-full max-w-[120px]">
-                            <button onclick="handleRequest('${r.id}', 'accepted')" class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Accept</button>
+        
+                        <div class="flex gap-2 w-full max-w-[120px]">
+                            ${isOccupied ? 
+                            `<button disabled class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest opacity-30 cursor-not-allowed">Accept</button>` : 
+                            `<button onclick="handleRequest('${r.id}', 'accepted')" class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Accept</button>`}
                             <button onclick="handleRequest('${r.id}', 'declined')" class="flex-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 hover:text-white text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest transition-colors">Decline</button>
                         </div>
                         <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors w-full max-w-[120px]">Details</button>
                     </div>
+        
                 </div>`;
             }).join('');
 
@@ -2292,23 +2308,44 @@ function renderDashboard() {
                 return `
                 <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 opacity-40 grayscale transition-all hover:opacity-100 hover:grayscale-0 group">
                     <div class="flex items-center space-x-4">
-                        <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white/40 border border-white/40 flex flex-col shrink-0 items-center justify-center font-black">
+      
+                  <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white/40 border border-white/40 flex flex-col shrink-0 items-center justify-center font-black">
                             <span class="text-[8px] uppercase leading-none mt-0.5">${p.month}</span>
                             <span class="text-sm leading-none">${p.date}</span>
+       
                         </div>
                         <div>
                             <h4 class="font-medium text-sm text-white/40 capitalize tracking-tight group-hover:text-white">${p.title}</h4>
-                             <p class="text-[10px] text-white/20 uppercase tracking-widest font-medium group-hover:text-white/40">${p.time}</p>
+                         
+                            <p class="text-[10px] text-white/20 uppercase tracking-widest font-medium group-hover:text-white/40">${p.time}</p>
                         </div>
                     </div>
                     <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+            
                 </div>`;
             }).join('');
             
-            window.dashboardInterval = setInterval(updateCountdowns, 60000);
+            window.dashboardInterval = setInterval(updateCountdowns, 1000);
             updateCountdowns();
+
+            // Exact Real-time Transitions
+            if (window.transitionTimeouts) window.transitionTimeouts.forEach(clearTimeout);
+            window.transitionTimeouts = [];
+            const rightNow = new Date().getTime();
+            dbMeetings.forEach(m => {
+                const startMs = new Date(m.start_time_utc).getTime();
+                const endMs = new Date(m.end_time_utc).getTime();
+                // Schedule re-render exactly when a meeting starts or ends 
+                if (startMs > rightNow && startMs - rightNow <= 86400000) {
+                    window.transitionTimeouts.push(setTimeout(renderDashboard, startMs - rightNow + 100)); 
+                }
+                if (endMs > rightNow && endMs - rightNow <= 86400000) {
+                    window.transitionTimeouts.push(setTimeout(renderDashboard, endMs - rightNow + 100));
+                }
+            });
+
             lucide.createIcons();
-        }
+    }
 
         function openDetailsModal(jsonStr) {
             const m = JSON.parse(decodeURIComponent(jsonStr));
