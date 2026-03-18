@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Callcutz</title>
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/dobnqmfsg/image/upload/v1771827572/Untitled_design-removebg-preview_bj0uah.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2465,13 +2466,14 @@ function renderDashboard() {
             if(!mId || !newTitle) return;
             try {
                 const mIndex = dbMeetings.findIndex(m => m.id === mId);
-                if (mIndex === -1) return;
-                
+                if(mIndex === -1) return;
+
                 const oldTitle = dbMeetings[mIndex].title || '';
                 const oldNotes = dbMeetings[mIndex].description || '';
-                
-                // Check if anything actually changed to prevent redundant webhooks & DB calls
-                const hasChanged = newTitle !== oldTitle || newNotes !== oldNotes;
+                const hasChanged = oldTitle !== newTitle || oldNotes !== newNotes;
+
+                const startUTC = dbMeetings[mIndex].start_time_utc;
+                const endUTC = dbMeetings[mIndex].end_time_utc;
 
                 // Optimistically update UI instantly
                 document.getElementById('cd-title').innerText = newTitle;
@@ -2479,13 +2481,6 @@ function renderDashboard() {
                 document.getElementById('cd-notes').style.display = newNotes ? 'block' : 'none';
                 toggleEditMode(false);
                 
-                if (!hasChanged) return; // Exit early if no changes were made
-
-                // Grab start and end times
-                const startTimeUTC = dbMeetings[mIndex].start_time_utc;
-                const endTimeUTC = dbMeetings[mIndex].end_time_utc;
-
-                // Update local state
                 dbMeetings[mIndex].title = newTitle;
                 dbMeetings[mIndex].description = newNotes;
                 
@@ -2493,36 +2488,39 @@ function renderDashboard() {
                 renderDashboard();
                 if (!document.getElementById('page-teamview').classList.contains('hidden')) renderTeamGrid();
 
-                // 1. Fresh DB Query: Get accepted participants
-                const { data: acceptedParts } = await supabaseClient
-                    .from('meeting_participants')
-                    .select('user_id')
-                    .eq('meeting_id', mId)
-                    .eq('response_status', 'accepted')
-                    .neq('user_id', authUserId);
+                // Only hit DB and Webhook if values actually changed
+                if (hasChanged) {
+                    // 1. Fresh DB Query: Get accepted participants
+                    const { data: acceptedParts } = await supabaseClient
+                        .from('meeting_participants')
+                        .select('user_id')
+                        .eq('meeting_id', mId)
+                        .eq('response_status', 'accepted')
+                        .neq('user_id', authUserId);
 
-                let participantIds = [];
-                if (acceptedParts && acceptedParts.length > 0) {
-                    participantIds = acceptedParts.map(p => p.user_id);
+                    let participantIds = [];
+                    if (acceptedParts && acceptedParts.length > 0) {
+                        participantIds = acceptedParts.map(p => p.user_id);
+                    }
+
+                    // 2. Send Webhook silently in the background
+                    fetch('https://n8n.norkx.space/webhook/calleditez', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            meeting_id: mId,
+                            host_id: authUserId,
+                            accepted_participants: participantIds,
+                            new_title: newTitle,
+                            new_notes: newNotes,
+                            start_time_utc: startUTC,
+                            end_time_utc: endUTC
+                        })
+                    }).catch(err => console.error("Webhook trigger failed:", err));
+
+                    // 3. Send to Database
+                    await supabaseClient.from('meetings').update({ title: newTitle, description: newNotes }).eq('id', mId);
                 }
-
-                // 2. Send Webhook silently in the background
-                fetch('https://n8n.norkx.space/webhook/calleditez', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        meeting_id: mId,
-                        host_id: authUserId,
-                        accepted_participants: participantIds,
-                        new_title: newTitle,
-                        new_notes: newNotes,
-                        start_time_utc: startTimeUTC,
-                        end_time_utc: endTimeUTC
-                    })
-                }).catch(err => console.error("Webhook trigger failed:", err));
-
-                // 3. Send to Database
-                await supabaseClient.from('meetings').update({ title: newTitle, description: newNotes }).eq('id', mId);
             } catch (e) {
                 console.error("Failed to save meeting edit", e);
             }
