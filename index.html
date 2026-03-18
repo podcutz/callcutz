@@ -983,10 +983,24 @@
             }
             
             let savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+            
+            // Deep link handling: check if URL asks for a specific tab
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('tab') === 'requests') {
+                savedPage = 'dashboard'; // Force dashboard to open
+            }
+            
             if (savedPage === 'teamview' && !isAllowedTeamView) {
                 savedPage = 'dashboard'; // Boot unauthorized users back to dashboard
             }
             showPage(savedPage);
+            
+            // If requested via deep link, switch to the Requests tab and clear URL
+            if (urlParams.get('tab') === 'requests') {
+                switchTab('requests');
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+            
             lucide.createIcons();
         }
 
