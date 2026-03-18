@@ -2479,13 +2479,14 @@ function renderDashboard() {
                     const userIds = acceptedParts.map(p => p.user_id);
                     const { data: profilesData } = await supabaseClient
                         .from('profiles')
-                        .select('id, email')
+                        .select('id, email, full_name')
                         .in('id', userIds);
                     
                     if (profilesData) {
                         participantsData = profilesData.map(p => ({
                             user_id: p.id,
-                            email: p.email
+                            email: p.email,
+                            name: p.full_name
                         }));
                     }
                 }
@@ -2497,6 +2498,7 @@ function renderDashboard() {
                     body: JSON.stringify({
                         meeting_id: id,
                         host_id: authUserId,
+                        host_name: currentUserProfile.full_name,
                         participants: participantsData
                     })
                 }).catch(err => console.error("Webhook trigger failed:", err));
