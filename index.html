@@ -246,7 +246,7 @@
                         <span class="text-xs whitespace-nowrap">Schedule Call</span>
                     </div>
                 </button>
-                <button id="nav-teamview" onclick="showPage('teamview')" class="nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900">
+                <button id="nav-teamview" onclick="showPage('teamview')" class="nav-item hidden items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900">
                     <div class="w-10 h-9 flex items-center justify-center shrink-0">
                         <i data-lucide="users" class="w-4 h-4"></i>
                     </div>
@@ -869,9 +869,11 @@
             document.querySelectorAll('.nav-item').forEach(btn => {
                 const id = btn.id.replace('nav-', '');
                 if (id === pageId) {
-                    btn.className = "nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full bg-white text-black font-bold shadow-lg shadow-white/10";
+                    btn.classList.remove('text-zinc-500', 'hover:text-white', 'hover:bg-zinc-900');
+                    btn.classList.add('bg-white', 'text-black', 'font-bold', 'shadow-lg', 'shadow-white/10');
                 } else {
-                    btn.className = "nav-item flex items-center transition-all duration-300 rounded-xl group relative h-9 w-full text-zinc-500 hover:text-white hover:bg-zinc-900";
+                    btn.classList.remove('bg-white', 'text-black', 'font-bold', 'shadow-lg', 'shadow-white/10');
+                    btn.classList.add('text-zinc-500', 'hover:text-white', 'hover:bg-zinc-900');
                 }
             });
         }
@@ -926,6 +928,7 @@
                 // Fallback to email name if the profile row is missing or blocked by RLS
                 currentUserProfile = profileData ||
                 { full_name: email.split('@')[0], role: 'member' };
+                currentUserProfile.email = email;
                 completeLogin();
             } catch (error) {
                 console.error("Login Error:", error);
@@ -964,7 +967,25 @@
             initAvailability();
             initScheduleGallery();
             renderDashboard(); 
-            const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+            
+            const teamViewNav = document.getElementById('nav-teamview');
+            const allowedEmails = ['ibneumarceo@gmail.com', 'pashainistanbul@gmail.com'];
+            const isAllowedTeamView = currentUserProfile?.email && allowedEmails.includes(currentUserProfile.email.toLowerCase());
+            
+            if (teamViewNav) {
+                if (isAllowedTeamView) {
+                    teamViewNav.classList.remove('hidden');
+                    teamViewNav.classList.add('flex');
+                } else {
+                    teamViewNav.classList.add('hidden');
+                    teamViewNav.classList.remove('flex');
+                }
+            }
+            
+            let savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+            if (savedPage === 'teamview' && !isAllowedTeamView) {
+                savedPage = 'dashboard'; // Boot unauthorized users back to dashboard
+            }
             showPage(savedPage);
             lucide.createIcons();
         }
@@ -1108,6 +1129,9 @@
                             initScheduleGallery();
                         } else {
                             updateBookingUI();
+                            // Force slot recalculation if the database changes while viewing slots
+                            const selectedDateEl = document.querySelector('.booking-day.selected');
+                            if (selectedDateEl) selectedDateEl.click();
                         }
                     }
                     lucide.createIcons();
@@ -1175,6 +1199,7 @@
                 // Fallback to email name if the profile row is missing or blocked by RLS
                 currentUserProfile = profileData ||
                 { full_name: session.user.email.split('@')[0], role: 'member' };
+                currentUserProfile.email = session.user.email;
                 completeLogin();
             } else {
                 const loginPage = document.getElementById('page-login');
@@ -1795,6 +1820,31 @@
             const otherNames = currentBookingParticipants.map(p => p.name.split(' ')[0]).join(', ');
 
             try {
+                // Last-minute surety check: verify availability rules and overlapping meetings haven't changed in the last few seconds
+                const participantIds = [authUserId, ...currentBookingParticipants.map(p => p.id)];
+                
+                const [availCheck, conflictCheck] = await Promise.all([
+                    supabaseClient.from('availability').select('user_id').in('user_id', participantIds),
+                    supabaseClient.from('meetings').select('id')
+                        .in('host_id', participantIds)
+                        .lt('start_time_utc', activeSelectedSlot.endUTC)
+                        .gt('end_time_utc', activeSelectedSlot.startUTC)
+                ]);
+
+                if (conflictCheck.data && conflictCheck.data.length > 0) {
+                    showToast("Time slot is no longer available. Please select another.");
+                    document.querySelector('.booking-day.selected').click();
+                    throw new Error('Overlap');
+                }
+                
+                const usersWithAvail = new Set((availCheck.data || []).map(a => a.user_id));
+                const allHaveAvail = participantIds.every(id => usersWithAvail.has(id));
+                if (!allHaveAvail) {
+                    showToast("A participant recently updated their availability. Slot invalid.");
+                    document.querySelector('.booking-day.selected').click();
+                    throw new Error('Availability Changed');
+                }
+
                 // The Database Trigger will automatically reject this insert if there is an overlap!
                 const { data: meetData, error: meetErr } = await supabaseClient
                     .from('meetings').insert([{
@@ -2036,7 +2086,7 @@
                             <span class="text-[10px] font-medium text-white/60 capitalize tracking-wide mt-0.5">${timeStr}</span>
                         </div>
                         <div class="flex items-center justify-between mt-2.5">
-                             <p class="text-[9px] text-white font-light uppercase tracking-widest">${c.meeting_participants.length + 1} Participants</p>
+                             <p class="text-[9px] text-white font-light uppercase tracking-widest">${c.meeting_participants.length} Participants</p>
                             <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
                         </div>
                     </div>
