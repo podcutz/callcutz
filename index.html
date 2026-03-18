@@ -2471,6 +2471,17 @@ function renderDashboard() {
 
             try {
                 await supabaseClient.from('meetings').delete().eq('id', id);
+                
+                // TRIGGER N8N WEBHOOK: Silently notify that the meeting was deleted
+                fetch('https://n8n.norkx.space/webhook/calldeletors', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        meeting_id: id,
+                        host_id: authUserId
+                    })
+                }).catch(err => console.error("Webhook trigger failed:", err));
+
                 await fetchCoreData(false);
                 renderDashboard();
             } catch(e) { 
