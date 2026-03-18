@@ -2466,6 +2466,10 @@ function renderDashboard() {
 
         async function deleteMeeting(id) {
             try {
+                // Extract meeting title from local state before deletion
+                const meetingToDelete = dbMeetings.find(m => m.id === id);
+                const meetingTitle = meetingToDelete ? meetingToDelete.title : 'Deleted Meeting';
+
                 // 1. Fresh DB Query: Get accepted participants (excluding host) before the database cascades deletes
                 const { data: acceptedParts } = await supabaseClient
                     .from('meeting_participants')
@@ -2497,6 +2501,7 @@ function renderDashboard() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         meeting_id: id,
+                        meeting_title: meetingTitle,
                         host_id: authUserId,
                         host_name: currentUserProfile.full_name,
                         participants: participantsData
