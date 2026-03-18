@@ -1063,10 +1063,17 @@
 
             const meets = meetsRes.data;
             if (meets) {
-                dbMeetings = meets.filter(m => 
-                    m.host_id === authUserId || 
-                    m.meeting_participants.some(p => p.user_id === authUserId)
-                );
+                const allowedEmails = ['ibneumarceo@gmail.com', 'pashainistanbul@gmail.com'];
+                const isAllowedTeamView = currentUserProfile?.email && allowedEmails.includes(currentUserProfile.email.toLowerCase());
+                
+                if (isAllowedTeamView) {
+                    dbMeetings = meets;
+                } else {
+                    dbMeetings = meets.filter(m => 
+                        m.host_id === authUserId || 
+                        m.meeting_participants.some(p => p.user_id === authUserId)
+                    );
+                }
             }
         }
 
@@ -2192,9 +2199,14 @@ function renderDashboard() {
                     isHost: amIHost, startUTC: m.start_time_utc, isLive: isLive, under24h: under24h, allDeclined: allDeclined, type: m.type, isWithin15Mins: isWithin15Mins, fullRecord: m
                 };
                 
-                if (isPast) { pasts.push(itemObj); } 
-                else if (!amIHost && itemObj.myStatus === 'pending') { requests.push(itemObj); } 
-                else if (amIHost || itemObj.myStatus === 'accepted') { upcomings.push(itemObj); }
+                // Only show meetings in personal dashboard if I am the host or a participant
+                if (amIHost || myParticipantRecord) {
+                    if (isPast) { pasts.push(itemObj); } 
+                    else if (!amIHost && itemObj.myStatus === 'pending') { requests.push(itemObj);
+                    } 
+                    else if (amIHost || itemObj.myStatus === 'accepted') { upcomings.push(itemObj);
+                    }
+                }
             });
 
             // 1. Render Upcoming
