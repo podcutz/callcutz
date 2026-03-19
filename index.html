@@ -2116,8 +2116,8 @@
                         </div>
                         <div class="flex items-center justify-between mt-2.5">
                              <p class="text-[9px] text-white font-light uppercase tracking-widest">${c.meeting_participants.length} Participants</p>
-                            <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
-                        </div>
+                                <button onclick="openDetailsModal('${c.id}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+                            </div>
                     </div>
                 `;
 
@@ -2256,7 +2256,7 @@ function renderDashboard() {
                     <div class="flex items-center justify-end gap-2 w-[30%] pr-4 shrink-0">
                         ${(!s.allDeclined && s.isWithin15Mins && s.fullRecord.google_meet_link) ?
 `<button onclick="window.open('${s.fullRecord.google_meet_link}', '_blank')" class="bg-white text-black border border-white text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Join</button>` : ''}
-                        <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+                        <button onclick="openDetailsModal('${s.id}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
                     </div>
                 </div>`;
             }).join('');
@@ -2303,7 +2303,7 @@ function renderDashboard() {
                             `<button onclick="handleRequest('${r.id}', 'accepted')" class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Accept</button>`}
                             <button onclick="handleRequest('${r.id}', 'declined')" class="flex-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 hover:text-white text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest transition-colors">Decline</button>
                         </div>
-                        <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors w-full max-w-[120px]">Details</button>
+                        <button onclick="openDetailsModal('${r.id}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors w-full max-w-[120px]">Details</button>
                     </div>
         
                 </div>`;
@@ -2328,7 +2328,7 @@ function renderDashboard() {
                             <p class="text-[10px] text-white/20 uppercase tracking-widest font-medium group-hover:text-white/40">${p.time}</p>
                         </div>
                     </div>
-                    <button onclick="openDetailsModal('${jsonStr}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+                    <button onclick="openDetailsModal('${p.id}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
             
                 </div>`;
             }).join('');
@@ -2355,8 +2355,9 @@ function renderDashboard() {
             lucide.createIcons();
     }
 
-        function openDetailsModal(jsonStr) {
-            const m = JSON.parse(decodeURIComponent(jsonStr));
+        function openDetailsModal(meetingId) {
+            const m = dbMeetings.find(meet => meet.id === meetingId);
+            if (!m) return;
             const modal = document.getElementById('callDetailsModal');
             document.getElementById('cd-title').innerText = m.title || 'Meeting';
             
