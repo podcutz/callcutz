@@ -2568,13 +2568,12 @@ function renderDashboard() {
                 const meetingStart = meetingToDelete ? meetingToDelete.start_time_utc : null;
                 const meetingEnd = meetingToDelete ? meetingToDelete.end_time_utc : null;
 
-                // 1. Fresh DB Query: Get accepted participants (excluding host) before the database cascades deletes
+                // 1. Fresh DB Query: Get all accepted participants (including the host) before the database cascades deletes
                 const { data: acceptedParts } = await supabaseClient
                     .from('meeting_participants')
                     .select('user_id')
                     .eq('meeting_id', id)
-                    .eq('response_status', 'accepted')
-                    .neq('user_id', authUserId);
+                    .eq('response_status', 'accepted');
 
                 let participantsData = [];
                 if (acceptedParts && acceptedParts.length > 0) {
