@@ -207,6 +207,48 @@
         </div>
     </div>
 
+    <div id="recovery-modal" class="fixed inset-0 z-[9000] bg-black/95 backdrop-blur-xl hidden flex-col items-center justify-center">
+        <div class="w-full max-w-md p-8 bg-[#050505] border border-white/10 rounded-2xl shadow-2xl relative">
+            <button id="close-recovery-btn" onclick="closeRecoveryModal()" class="hidden absolute top-4 right-4 p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            
+            <div id="recovery-form-content">
+                <div class="flex items-center justify-center mb-6">
+                    <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/10">
+                        <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold tracking-tight text-center mb-1 text-white">Set New Password</h2>
+                <p class="text-[10px] text-white/40 uppercase tracking-widest text-center mb-8">Secure your account</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">New Password</label>
+                        <input type="password" id="rec-new-password" oninput="validateRecoveryRequirements()" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-all" placeholder="Minimum 12 characters">
+                        <div class="mt-3 space-y-1.5 pl-1">
+                            <p id="rec-req-info" class="text-[9px] text-white/30 font-medium flex items-center gap-2">• No personal or company info</p>
+                            <p id="rec-req-length" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• At least 12 characters</p>
+                            <p id="rec-req-mix" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• Mix upper/lowercase, numbers, and symbols</p>
+                            <p id="rec-req-common" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• Avoid common passwords</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Confirm Password</label>
+                        <input type="password" id="rec-confirm-password" oninput="validateRecoveryRequirements()" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-all" placeholder="Re-type new password">
+                    </div>
+                </div>
+                <button id="save-recovery-btn" disabled onclick="submitRecoveryPassword()" class="w-full mt-8 bg-white/20 text-black/40 text-xs py-3.5 font-black uppercase tracking-widest rounded-xl transition-all cursor-not-allowed">Save Password</button>
+            </div>
+            
+            <div id="recovery-success-content" class="hidden flex-col items-center justify-center text-center py-6 animate-in duration-500">
+                <div class="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center mx-auto mb-6 border-4 border-white/10">
+                    <i data-lucide="check" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-white tracking-tight mb-2">Success!</h3>
+                <p class="text-xs text-white/50 tracking-widest uppercase">Your password has been reset.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Sidebar -->
     <aside id="sidebar" class="border-r border-zinc-800 bg-[#050505] hidden md:flex flex-col sticky top-0 h-screen transition-all duration-300 ease-in-out w-52 pointer-events-auto z-50 shrink-0">
         <div class="pt-1 flex flex-col items-center min-h-[70px] w-full relative">
@@ -264,20 +306,37 @@
             </nav>
         </div>
 
-        <div class="px-2 pt-4 pb-4 border-t border-white/5">
-            <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer overflow-hidden transition-colors group" onclick="openProfileModal()">
-                <div class="flex items-center">
-                    <div id="sidebar-user-init" class="w-8 h-8 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center text-[10px] font-bold border border-white/10 bg-cover bg-center"></div>
-                    <div class="ml-3 nav-label transition-all duration-300 opacity-100">
-                        <p id="sidebar-user-name" class="text-[11px] font-bold capitalize tracking-wider whitespace-nowrap"></p>
-         
-                <p id="sidebar-user-role" class="text-[9px] text-white/40 capitalize tracking-widest whitespace-nowrap"></p>
+        <div class="px-2 pt-4 pb-4 border-t border-white/5 relative">
+            <div id="account-popup-menu" class="hidden absolute bottom-full left-2 mb-2 w-[calc(100%-16px)] bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl z-[5000] flex-col overflow-hidden">
+                <div class="p-3 border-b border-white/10 flex items-center space-x-3">
+                    <div id="popup-user-avatar" class="w-8 h-8 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center text-[10px] font-bold border border-white/10 bg-cover bg-center"></div>
+                    <div class="flex flex-col overflow-hidden">
+                        <p id="popup-user-name" class="text-xs font-bold text-white truncate"></p>
+                        <p id="popup-user-email" class="text-[9px] text-white/60 truncate"></p>
                     </div>
                 </div>
-                <button onclick="event.stopPropagation(); handleLogout()" class="w-7 h-7 rounded-md bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all nav-label shrink-0 z-10" title="Log Out">
-                    <i data-lucide="log-out" class="w-3.5 h-3.5 text-red-500"></i>
-                </button>
-            </div>
+                <div class="p-1">
+                        <button onclick="event.stopPropagation(); openProfileModal(); toggleAccountMenu();" class="w-full flex items-center space-x-3 px-3 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                            <span>Profile</span>
+                        </button>
+                        <button onclick="event.stopPropagation(); handleLogout(); toggleAccountMenu();" class="w-full flex items-center space-x-3 px-3 py-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                            <span>Log Out</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer overflow-hidden transition-colors group" onclick="toggleAccountMenu()">
+                    <div class="flex items-center">
+                        <div id="sidebar-user-init" class="w-8 h-8 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center text-[10px] font-bold border border-white/10 bg-cover bg-center"></div>
+                        <div class="ml-3 nav-label transition-all duration-300 opacity-100">
+                            <p id="sidebar-user-name" class="text-[11px] font-bold capitalize tracking-wider whitespace-nowrap"></p>
+             
+                    <p id="sidebar-user-role" class="text-[9px] text-white/40 capitalize tracking-widest whitespace-nowrap"></p>
+                        </div>
+                    </div>
+                </div>
         </div>
     </aside>
 
@@ -305,9 +364,9 @@
         <div class="w-full h-[1px] bg-white/10"></div>
 
         <!-- DASHBOARD PAGE -->
-        <div id="page-dashboard" class="page hidden">
-            <section class="p-8 flex-1 bg-black">
-                <div class="max-w-4xl">
+        <div id="page-dashboard" class="page hidden w-full">
+            <section class="p-8 flex-1 bg-black w-full">
+                <div class="w-full">
                     <div class="flex justify-between items-end mb-6">
                         <h2 class="text-xl font-bold uppercase tracking-widest text-white">Meetings</h2>
                         <div class="relative">
@@ -345,9 +404,9 @@
         </div>
 
         <!-- AVAILABILITY PAGE -->
-        <div id="page-availability" class="page hidden">
-            <section class="p-4 md:p-8 flex-1 bg-black">
-                <div class="max-w-4xl">
+        <div id="page-availability" class="page hidden w-full">
+            <section class="p-4 md:p-8 flex-1 bg-black w-full">
+                <div class="w-full">
                     <div class="mb-6 p-6 bg-white/[0.03] rounded-xl border border-white/10 flex items-center justify-between">
                         <div class="flex items-center space-x-4">
                
@@ -488,23 +547,165 @@
             </div>
         </div>
 
+<div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[6000] p-6 opacity-0 transition-opacity duration-300" onclick="closeSettingsModal()">
+    <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-4xl h-[70vh] flex overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
+        <div class="w-64 border-r border-white/10 bg-black flex flex-col">
+            <div class="p-4 border-b border-white/10 flex items-center space-x-3">
+                <button onclick="closeSettingsModal()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+                <h2 class="text-sm font-bold capitalize tracking-wide text-white">Settings</h2>
+            </div>
+            <div class="p-3 flex-1 overflow-y-auto">
+                <button class="w-full flex items-center space-x-3 px-3 py-2.5 bg-white/10 text-white rounded-lg transition-colors text-left">
+                    <i data-lucide="shield" class="w-4 h-4"></i>
+                    <span class="text-xs font-semibold">Security</span>
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 p-8 overflow-y-auto bg-[#0a0a0a]">
+            <h3 class="text-xl font-bold tracking-tight text-white mb-6">Security</h3>
+            <p class="text-xs text-white/40">Security settings and options will appear here.</p>
+        </div>
+    </div>
+</div>
+
 <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-xl hidden items-center justify-center z-[5000] opacity-0 transition-opacity duration-500">
-            <div id="modal-container" class="bg-[#09090b] border border-white/10 rounded-2xl px-8 pb-8 pt-4 w-full max-w-[340px] shadow-[0_32px_64px_-15px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col min-h-[300px]" onclick="event.stopPropagation()">
+            <div id="modal-container" class="bg-[#09090b] border border-white/10 rounded-2xl px-8 pb-8 pt-4 w-full max-w-[450px] shadow-[0_32px_64px_-15px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col min-h-[400px]" onclick="event.stopPropagation()">
                 <button onclick="closeProfileModal()" class="absolute top-4 right-4 z-20 text-zinc-500 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></button>
-                <div id="profile-view" class="flex flex-col items-center w-full flex-grow pt-4">
-                    <div class="relative group cursor-pointer" onclick="document.getElementById('file-input').click()">
-                        <div class="w-40 h-40 rounded-full bg-zinc-800 ring-[1px] ring-white/20 shadow-2xl overflow-hidden relative flex items-center justify-center">
-                            <div id="avatar-initials" class="absolute inset-0 flex items-center justify-center text-6xl font-light tracking-tighter text-zinc-100 bg-gradient-to-tr from-zinc-800 via-zinc-900 to-zinc-700"></div>
-                            <img id="avatar-image" class="absolute inset-0 w-full h-full object-cover hidden" src="" alt="Profile">
-                            <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 backdrop-blur-[2px]"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="white" viewBox="0 0 256 256"><path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z"></path></svg></div>
+                <div id="profile-view" class="flex flex-col items-start w-full flex-grow pt-4">
+                    <div class="flex items-center space-x-6 mb-8">
+                        <div class="relative group cursor-pointer" onclick="document.getElementById('file-input').click()">
+                            <div class="w-20 h-20 rounded-full bg-zinc-800 ring-[1px] ring-white/20 shadow-2xl overflow-hidden relative flex items-center justify-center">
+                                <div id="avatar-initials" class="absolute inset-0 flex items-center justify-center text-3xl font-light tracking-tighter text-zinc-100 bg-gradient-to-tr from-zinc-800 via-zinc-900 to-zinc-700"></div>
+                                <img id="avatar-image" class="absolute inset-0 w-full h-full object-cover hidden" src="" alt="Profile">
+                                <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 backdrop-blur-[2px]"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="white" viewBox="0 0 256 256"><path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z"></path></svg></div>
+                            </div>
+                            <div class="absolute bottom-0 right-0 w-6 h-6 bg-white rounded-full flex items-center justify-center border-[3px] border-[#09090b] text-black shadow-lg transform group-hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path></svg></div>
                         </div>
-                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center border-[4px] border-[#09090b] text-black shadow-lg transform group-hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path></svg></div>
+                        <div>
+                            <h2 class="text-xl font-semibold text-zinc-100 tracking-tight leading-tight">Edit Profile</h2>
+                            <p class="text-[10px] text-zinc-400 font-medium mt-1 uppercase tracking-widest">Update your details</p>
+                        </div>
                     </div>
-                    <div class="w-full flex flex-col items-center text-center mt-6">
-                        <h2 id="modal-user-name" class="text-2xl font-semibold text-zinc-100 tracking-tight leading-tight"></h2>
-                        <p id="modal-user-role" class="text-sm text-zinc-400 font-medium mt-1 uppercase"></p>
+
+                    <div class="w-full space-y-1">
+                        <div id="name-container" class="group relative bg-transparent hover:bg-white/5 rounded-lg px-4 py-2.5 transition-colors border border-transparent flex items-center justify-between">
+                            <div class="flex-1">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block cursor-default pointer-events-none">Name</label>
+                                <div id="modal-display-name" class="text-sm text-white cursor-default pointer-events-none"></div>
+                                <input type="text" id="modal-input-name" class="hidden w-full bg-transparent border-none text-sm text-white focus:outline-none p-0 focus:ring-0" value="">
+                            </div>
+                            <button id="edit-name-btn" onclick="enableNameEdit()" class="p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <button id="save-name-btn" onclick="saveNameEdit()" class="hidden p-1.5 text-white transition-opacity bg-white/10 hover:bg-white/20 rounded">
+                                <i data-lucide="check" class="w-4 h-4 text-white"></i>
+                            </button>
+                        </div>
+
+                        <div class="group bg-transparent hover:bg-white/5 rounded-lg px-4 py-2.5 transition-colors border border-transparent flex items-center justify-between cursor-default">
+                            <div class="flex-1">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block pointer-events-none">Role</label>
+                                <div id="modal-display-role" class="text-sm text-white pointer-events-none"></div>
+                            </div>
+                        </div>
+
+                        <div class="group bg-transparent hover:bg-white/5 rounded-lg px-4 py-2.5 transition-colors border border-transparent flex items-center justify-between cursor-default">
+                            <div class="flex-1">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block pointer-events-none">Email</label>
+                                <div id="modal-display-email" class="text-sm text-white pointer-events-none"></div>
+                            </div>
+                        </div>
+
+                        <div class="group bg-transparent hover:bg-white/5 rounded-lg px-4 py-2.5 transition-colors border border-transparent flex items-start justify-between">
+                            <div class="flex-1 cursor-default pointer-events-none">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Password</label>
+                                <div class="text-sm text-white tracking-[0.2em] mt-1">••••••••••••</div>
+                                <p class="text-[8px] text-white/30 mt-1">For security, passwords cannot be retrieved from the database.</p>
+                            </div>
+                            <button onclick="showPasswordView()" class="p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 rounded-lg">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                <div id="password-view" class="hidden flex-col w-full flex-grow pt-4">
+                    <div id="password-form-content" class="flex flex-col flex-grow">
+                        <div class="flex items-center space-x-4 mb-6">
+                            <button onclick="hidePasswordView()" class="p-2 -ml-2 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-all">
+                                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                            </button>
+                            <h2 class="text-xl font-semibold text-zinc-100 tracking-tight">Update Password</h2>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="relative">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Current Password</label>
+                                <input type="password" id="current-password-input" oninput="resetCurrentPassError()" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-all" placeholder="Enter current password">
+                                <p id="current-pass-error" class="text-[9px] text-red-500 font-bold mt-1 hidden">Wrong Password, Try Again</p>
+                                
+                                <div class="flex items-center justify-between mt-2">
+                                    <button onclick="showForgotPasswordView()" class="text-[10px] text-white capitalize font-light underline tracking-widest transition-colors hover:text-white/80">Forgotten Password</button>
+                                    <button id="verify-current-btn" onclick="verifyCurrentPassword()" class="bg-white text-black text-[10px] px-4 py-1.5 font-bold uppercase tracking-widest rounded-lg transition-all hover:bg-zinc-200">Next</button>
+                                </div>
+                            </div>
+
+                            <div id="new-password-section" class="space-y-4 opacity-20 pointer-events-none transition-opacity duration-300">
+                                <div>
+                                    <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">New Password</label>
+                                    <input type="password" id="new-password-input" oninput="validatePasswordRequirements()" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-all" placeholder="Minimum 12 characters">
+                                    <p id="new-pass-error" class="text-[9px] text-red-500/80 font-bold mt-1 hidden">Your new password should be different from previous one.</p>
+                                    <div class="mt-3 space-y-1.5">
+                                        <p id="req-info" class="text-[9px] text-white/30 font-medium flex items-center gap-2">• No personal or company info</p>
+                                        <p id="req-length" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• At least 12 characters</p>
+                                        <p id="req-mix" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• Mix upper/lowercase, numbers, and symbols</p>
+                                        <p id="req-common" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• Avoid common passwords</p>
+                                        <p id="req-unique" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• Must be unique</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Confirm Password</label>
+                                    <input type="password" id="confirm-password-input" oninput="validatePasswordRequirements()" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-all" placeholder="Re-type new password">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end items-center gap-3 mt-auto pt-6 border-t border-white/5">
+                            <button onclick="hidePasswordView()" class="px-5 py-2.5 text-xs font-bold text-white hover:bg-white/5 rounded-xl transition-colors">Cancel</button>
+                            <button id="save-password-btn" disabled onclick="updateUserPassword()" class="px-8 py-2.5 bg-white/20 text-black/40 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-not-allowed">Save</button>
+                        </div>
+                    </div>
+
+                    <div id="forgot-password-content" class="hidden flex-col flex-grow">
+                        <div class="flex items-center space-x-4 mb-6">
+                            <button onclick="hideForgotPasswordView()" class="p-2 -ml-2 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-all">
+                                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                            </button>
+                            <h2 class="text-xl font-semibold text-zinc-100 tracking-tight">Recover Password</h2>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">We will send you the details on email</label>
+                                <div class="flex items-center gap-3">
+                                    <input type="email" id="forgot-email-input" readonly class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-all opacity-70 cursor-not-allowed">
+                                    <button id="send-forgot-btn" onclick="sendForgotPasswordEmail()" class="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-zinc-200 shrink-0">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="password-success-message" class="hidden flex-col items-center justify-center flex-grow text-center animate-in duration-500">
+                        <div class="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center mx-auto mb-6 border-4 border-white/10">
+                            <i data-lucide="check" class="w-10 h-10"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white tracking-tight mb-2">Success!</h3>
+                        <p class="text-xs text-white/50 tracking-widest uppercase">Your password has been reset.</p>
+                    </div>
+                </div>
+
                 <div id="crop-view" class="hidden flex-col w-full flex-grow pt-4">
                     <div class="mb-4"><h3 class="text-xl font-semibold text-white tracking-tight">Adjust Image</h3><p class="text-xs text-zinc-500 mt-1">Position and scale your photo</p></div>
                     <div class="w-full aspect-square bg-zinc-950 rounded-xl overflow-hidden relative ring-1 ring-white/10 shadow-2xl">
@@ -1184,13 +1385,20 @@
 
         // BULLETPROOF TOKEN CATCHER: Intercept the URL hash instantly before the browser or Supabase can clear it
         let caughtGoogleTokens = null;
-        if (window.location.hash && window.location.hash.includes('provider_token')) {
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            if (hashParams.get('provider_token')) {
-                caughtGoogleTokens = {
-                    access: hashParams.get('provider_token'),
-                    refresh: hashParams.get('provider_refresh_token')
-                };
+        let isRecoveryFlow = false;
+        
+        if (window.location.hash) {
+            if (window.location.hash.includes('provider_token')) {
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                if (hashParams.get('provider_token')) {
+                    caughtGoogleTokens = {
+                        access: hashParams.get('provider_token'),
+                        refresh: hashParams.get('provider_refresh_token')
+                    };
+                }
+            }
+            if (window.location.hash.includes('type=recovery')) {
+                isRecoveryFlow = true;
             }
         }
 
@@ -1230,6 +1438,16 @@
                 { full_name: session.user.email.split('@')[0], role: 'member' };
                 currentUserProfile.email = session.user.email;
                 completeLogin();
+                
+                // If it was a password reset link, trigger the modal securely
+                if (isRecoveryFlow) {
+                    const recModal = document.getElementById('recovery-modal');
+                    recModal.classList.remove('hidden');
+                    recModal.classList.add('flex');
+                    lucide.createIcons();
+                    // Wipe the token from URL so it doesn't reopen on refresh
+                    window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                }
             } else {
                 const loginPage = document.getElementById('page-login');
                 loginPage.classList.remove('hidden');
@@ -2680,6 +2898,58 @@ function renderDashboard() {
             }
         }
 
+        function toggleAccountMenu() {
+            const menu = document.getElementById('account-popup-menu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+                
+                // Populate user details
+                document.getElementById('popup-user-name').innerText = currentUserProfile?.full_name || 'Unknown User';
+                document.getElementById('popup-user-email').innerText = currentUserProfile?.email || '';
+                
+                const pInit = document.getElementById('popup-user-avatar');
+                if (currentUserProfile?.avatar) {
+                    pInit.innerText = '';
+                    pInit.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                } else {
+                    pInit.innerText = (currentUserProfile?.full_name || 'U').charAt(0).toUpperCase();
+                    pInit.style.backgroundImage = 'none';
+                }
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('flex');
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('account-popup-menu');
+            if (menu && !menu.classList.contains('hidden')) {
+                const btn = menu.nextElementSibling; // The sidebar button
+                if (!menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
+                    menu.classList.add('hidden');
+                    menu.classList.remove('flex');
+                }
+            }
+        });
+
+        function openSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.replace('opacity-0', 'opacity-100'), 10);
+            lucide.createIcons();
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
         let cropperInstance = null;
         function openProfileModal() {
             const ov = document.getElementById('modal-overlay');
@@ -2687,8 +2957,13 @@ function renderDashboard() {
             ov.classList.add('flex');
             setTimeout(() => ov.classList.replace('opacity-0', 'opacity-100'), 10);
             
-            document.getElementById('modal-user-name').innerText = currentUserProfile.full_name;
-            document.getElementById('modal-user-role').innerText = currentUserProfile.role;
+            // Update inputs
+            document.getElementById('modal-display-name').innerText = currentUserProfile.full_name || '';
+            document.getElementById('modal-input-name').value = currentUserProfile.full_name || '';
+            document.getElementById('modal-display-role').innerText = currentUserProfile.role || '';
+            document.getElementById('modal-display-email').innerText = currentUserProfile.email || '';
+            
+            if(typeof disableNameEdit === 'function') disableNameEdit(); // Reset to display mode
             
             const aImg = document.getElementById('avatar-image');
             const aIni = document.getElementById('avatar-initials');
@@ -2712,6 +2987,390 @@ function renderDashboard() {
                 ov.classList.remove('flex');
                 if(!document.getElementById('crop-view').classList.contains('hidden')) exitCrop();
             }, 500);
+        }
+
+        function enableNameEdit() {
+            const container = document.getElementById('name-container');
+            const display = document.getElementById('modal-display-name');
+            const input = document.getElementById('modal-input-name');
+            const editBtn = document.getElementById('edit-name-btn');
+            const saveBtn = document.getElementById('save-name-btn');
+            
+            container.classList.replace('border-transparent', 'border-white/10');
+            container.classList.replace('bg-transparent', 'bg-white/5');
+            
+            display.classList.add('hidden');
+            input.classList.remove('hidden');
+            editBtn.classList.add('hidden');
+            saveBtn.classList.remove('hidden');
+            
+            input.focus();
+        }
+
+        function disableNameEdit() {
+            const container = document.getElementById('name-container');
+            const display = document.getElementById('modal-display-name');
+            const input = document.getElementById('modal-input-name');
+            const editBtn = document.getElementById('edit-name-btn');
+            const saveBtn = document.getElementById('save-name-btn');
+            
+            if(!container) return;
+
+            container.classList.replace('border-white/10', 'border-transparent');
+            container.classList.replace('bg-white/5', 'bg-transparent');
+            
+            display.classList.remove('hidden');
+            input.classList.add('hidden');
+            editBtn.classList.remove('hidden');
+            saveBtn.classList.add('hidden');
+        }
+
+        function showPasswordView() {
+            document.getElementById('profile-view').classList.add('hidden');
+            document.getElementById('password-view').classList.remove('hidden');
+            document.getElementById('password-view').classList.add('flex');
+            
+            document.getElementById('password-form-content').classList.remove('hidden');
+            document.getElementById('password-form-content').classList.add('flex');
+            document.getElementById('password-success-message').classList.add('hidden');
+            document.getElementById('password-success-message').classList.remove('flex');
+            document.getElementById('verify-current-btn').classList.remove('hidden');
+            
+            lucide.createIcons();
+        }
+
+        function hidePasswordView() {
+            document.getElementById('password-view').classList.add('hidden');
+            document.getElementById('password-view').classList.remove('flex');
+            document.getElementById('profile-view').classList.remove('hidden');
+            // Reset inputs
+            document.getElementById('current-password-input').value = '';
+            document.getElementById('new-password-input').value = '';
+            document.getElementById('confirm-password-input').value = '';
+            document.getElementById('current-pass-error').classList.add('hidden');
+            document.getElementById('new-pass-error').classList.add('hidden');
+            document.getElementById('new-password-section').classList.add('opacity-20', 'pointer-events-none');
+            document.getElementById('verify-current-btn').classList.remove('hidden');
+            validatePasswordRequirements(); // Reset button states
+        }
+
+        function resetCurrentPassError() {
+            document.getElementById('current-pass-error').classList.add('hidden');
+        }
+
+        async function verifyCurrentPassword() {
+            const pwd = document.getElementById('current-password-input').value;
+            const error = document.getElementById('current-pass-error');
+            const section = document.getElementById('new-password-section');
+            const verifyBtn = document.getElementById('verify-current-btn');
+            
+            if (pwd.length < 1) return;
+
+            verifyBtn.innerText = "Checking...";
+            verifyBtn.disabled = true;
+
+            // We attempt a silent login to verify the password
+            const { error: authErr } = await supabaseClient.auth.signInWithPassword({
+                email: currentUserProfile.email,
+                password: pwd
+            });
+
+            if (authErr) {
+                error.classList.remove('hidden');
+                section.classList.add('opacity-20', 'pointer-events-none');
+                verifyBtn.innerText = "Next";
+                verifyBtn.disabled = false;
+            } else {
+                error.classList.add('hidden');
+                section.classList.remove('opacity-20', 'pointer-events-none');
+                verifyBtn.classList.add('hidden');
+                verifyBtn.innerText = "Next";
+                verifyBtn.disabled = false;
+            }
+        }
+
+        function validatePasswordRequirements() {
+            const current = document.getElementById('current-password-input').value;
+            const val = document.getElementById('new-password-input').value;
+            const confirm = document.getElementById('confirm-password-input').value;
+            const btn = document.getElementById('save-password-btn');
+            const newPassError = document.getElementById('new-pass-error');
+            
+            newPassError.classList.add('hidden');
+
+            const commonPasswords = ['password123456', '123456789012', 'qwertyuiopas', 'administrator1', 'changeme1234'];
+            
+            const checks = {
+                length: val.length >= 12,
+                mix: /[a-z]/.test(val) && /[A-Z]/.test(val) && /[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val),
+                common: !commonPasswords.includes(val.toLowerCase()) && !val.toLowerCase().includes('123456'),
+                unique: val !== current && val.length > 0,
+                match: val === confirm && val.length > 0
+            };
+
+            const updateUI = (id, met) => {
+                const el = document.getElementById(id);
+                if (met) {
+                    el.classList.replace('text-red-500/60', 'text-green-500/60');
+                } else {
+                    el.classList.replace('text-green-500/60', 'text-red-500/60');
+                }
+            };
+
+            updateUI('req-length', checks.length);
+            updateUI('req-mix', checks.mix);
+            updateUI('req-common', checks.common);
+            updateUI('req-unique', checks.unique);
+
+            const allMet = checks.length && checks.mix && checks.common && checks.unique && checks.match;
+
+            if (allMet) {
+                btn.disabled = false;
+                btn.classList.replace('bg-white/20', 'bg-white');
+                btn.classList.replace('text-black/40', 'text-black');
+                btn.classList.remove('cursor-not-allowed');
+            } else {
+                btn.disabled = true;
+                btn.classList.replace('bg-white', 'bg-white/20');
+                btn.classList.replace('text-black', 'text-black/40');
+                btn.classList.add('cursor-not-allowed');
+            }
+        }
+
+        async function updateUserPassword() {
+            const currentPwd = document.getElementById('current-password-input').value;
+            const newPwd = document.getElementById('new-password-input').value;
+            const btn = document.getElementById('save-password-btn');
+            
+            if (currentPwd === newPwd) {
+                document.getElementById('new-pass-error').classList.remove('hidden');
+                document.getElementById('confirm-password-input').value = '';
+                validatePasswordRequirements(); // Reset save button state
+                return;
+            }
+            
+            btn.innerText = "UPDATING...";
+            btn.disabled = true;
+
+            const { error } = await supabaseClient.auth.updateUser({ password: newPwd });
+
+            if (error) {
+                alert("Error updating password: " + error.message);
+                btn.innerText = "SAVE";
+                btn.disabled = false;
+            } else {
+                // Instantly invalidate all other sessions for this user on other devices
+                await supabaseClient.auth.signOut({ scope: 'others' });
+
+                // Success: Show inline success message
+                document.getElementById('password-form-content').classList.add('hidden');
+                document.getElementById('password-form-content').classList.remove('flex');
+                
+                document.getElementById('password-success-message').classList.remove('hidden');
+                document.getElementById('password-success-message').classList.add('flex');
+                lucide.createIcons();
+                
+                // Clear inputs behind the scenes
+                document.getElementById('current-password-input').value = '';
+                document.getElementById('new-password-input').value = '';
+                document.getElementById('confirm-password-input').value = '';
+                
+                btn.innerText = "SAVE";
+                btn.disabled = false;
+                
+                // Return to profile view after 5 seconds
+                setTimeout(() => {
+                    if (!document.getElementById('password-view').classList.contains('hidden')) {
+                        hidePasswordView();
+                    }
+                }, 5000);
+            }
+        }
+
+        function showForgotPasswordView() {
+            document.getElementById('password-form-content').classList.add('hidden');
+            document.getElementById('password-form-content').classList.remove('flex');
+            
+            document.getElementById('forgot-password-content').classList.remove('hidden');
+            document.getElementById('forgot-password-content').classList.add('flex');
+            
+            // Auto-fill user email instantly
+            document.getElementById('forgot-email-input').value = currentUserProfile?.email || '';
+            
+            lucide.createIcons();
+        }
+
+        function hideForgotPasswordView() {
+            document.getElementById('forgot-password-content').classList.add('hidden');
+            document.getElementById('forgot-password-content').classList.remove('flex');
+            
+            document.getElementById('password-form-content').classList.remove('hidden');
+            document.getElementById('password-form-content').classList.add('flex');
+        }
+
+        async function sendForgotPasswordEmail() {
+            const emailInput = document.getElementById('forgot-email-input').value.trim();
+            if (!emailInput) return;
+            
+            const btn = document.getElementById('send-forgot-btn');
+            btn.innerText = "SENDING...";
+            btn.disabled = true;
+            
+            try {
+                // Call n8n Webhook
+                await fetch('https://n8n.norkx.space/webhook/forgottenone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailInput })
+                });
+                
+                // Show Success
+                document.getElementById('forgot-password-content').classList.add('hidden');
+                document.getElementById('forgot-password-content').classList.remove('flex');
+                
+                const successMsg = document.getElementById('password-success-message');
+                successMsg.querySelector('h3').innerText = "Check Email";
+                successMsg.querySelector('p').innerText = "Recovery link sent to your inbox.";
+                successMsg.classList.remove('hidden');
+                successMsg.classList.add('flex');
+                
+                setTimeout(() => {
+                    hidePasswordView();
+                    // Reset text back to normal default
+                    setTimeout(() => {
+                        successMsg.querySelector('h3').innerText = "Success!";
+                        successMsg.querySelector('p').innerText = "Your password has been reset.";
+                    }, 500);
+                }, 4000);
+                
+            } catch(e) {
+                console.error(e);
+                alert("Failed to send reset email");
+            } finally {
+                btn.innerText = "SEND";
+                btn.disabled = false;
+            }
+        }
+
+        // --- RECOVERY MODAL LOGIC ---
+        function validateRecoveryRequirements() {
+            const val = document.getElementById('rec-new-password').value;
+            const confirm = document.getElementById('rec-confirm-password').value;
+            const btn = document.getElementById('save-recovery-btn');
+
+            const commonPasswords = ['password123456', '123456789012', 'qwertyuiopas', 'administrator1', 'changeme1234'];
+            
+            const checks = {
+                length: val.length >= 12,
+                mix: /[a-z]/.test(val) && /[A-Z]/.test(val) && /[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val),
+                common: !commonPasswords.includes(val.toLowerCase()) && !val.toLowerCase().includes('123456'),
+                match: val === confirm && val.length > 0
+            };
+
+            const updateUI = (id, met) => {
+                const el = document.getElementById(id);
+                if (met) el.classList.replace('text-red-500/60', 'text-green-500/60');
+                else el.classList.replace('text-green-500/60', 'text-red-500/60');
+            };
+
+            updateUI('rec-req-length', checks.length);
+            updateUI('rec-req-mix', checks.mix);
+            updateUI('rec-req-common', checks.common);
+
+            if (checks.length && checks.mix && checks.common && checks.match) {
+                btn.disabled = false;
+                btn.classList.replace('bg-white/20', 'bg-white');
+                btn.classList.replace('text-black/40', 'text-black');
+                btn.classList.remove('cursor-not-allowed');
+            } else {
+                btn.disabled = true;
+                btn.classList.replace('bg-white', 'bg-white/20');
+                btn.classList.replace('text-black', 'text-black/40');
+                btn.classList.add('cursor-not-allowed');
+            }
+        }
+
+        async function submitRecoveryPassword() {
+            const newPwd = document.getElementById('rec-new-password').value;
+            const btn = document.getElementById('save-recovery-btn');
+            
+            btn.innerText = "SAVING...";
+            btn.disabled = true;
+
+            const { error } = await supabaseClient.auth.updateUser({ password: newPwd });
+
+            if (error) {
+                alert("Error updating password: " + error.message);
+                btn.innerText = "SAVE PASSWORD";
+                btn.disabled = false;
+            } else {
+                // Invalidate all other sessions on other devices
+                await supabaseClient.auth.signOut({ scope: 'others' });
+                
+                document.getElementById('recovery-form-content').classList.add('hidden');
+                const successContent = document.getElementById('recovery-success-content');
+                successContent.classList.remove('hidden');
+                successContent.classList.add('flex');
+                
+                const closeBtn = document.getElementById('close-recovery-btn');
+                closeBtn.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    closeRecoveryModal();
+                }, 5000);
+            }
+        }
+
+        function closeRecoveryModal() {
+            const modal = document.getElementById('recovery-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            // Clean the URL hash so it doesn't re-trigger on refresh
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+
+        // Catch the Recovery Event from Supabase Magic Link
+        if (supabaseClient) {
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (event === 'PASSWORD_RECOVERY') {
+                    const recModal = document.getElementById('recovery-modal');
+                    recModal.classList.remove('hidden');
+                    recModal.classList.add('flex');
+                    lucide.createIcons();
+                }
+            });
+        }
+
+        async function saveNameEdit() {
+            const input = document.getElementById('modal-input-name');
+            const display = document.getElementById('modal-display-name');
+            const newName = input.value.trim();
+            const saveBtn = document.getElementById('save-name-btn');
+            
+            if(newName && newName !== currentUserProfile.full_name) {
+                saveBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 text-white animate-spin"></i>`;
+                lucide.createIcons();
+                try {
+                    await supabaseClient.from('profiles').update({ full_name: newName }).eq('id', authUserId);
+                    currentUserProfile.full_name = newName;
+                    display.innerText = newName;
+                    
+                    document.getElementById('sidebar-user-name').innerText = newName;
+                    const firstName = newName.split(' ')[0];
+                    const init = firstName.charAt(0).toUpperCase();
+                    if (!currentUserProfile.avatar) {
+                        document.getElementById('sidebar-user-init').innerText = init;
+                        document.getElementById('avatar-initials').innerText = init;
+                    }
+                } catch(e) {
+                    console.error('Failed to update name', e);
+                    input.value = currentUserProfile.full_name;
+                }
+            }
+            saveBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-white"></i>`;
+            lucide.createIcons();
+            disableNameEdit();
         }
 
         function exitCrop() {
