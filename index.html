@@ -678,6 +678,19 @@
             </div>
         </div>
 
+        <div id="timezone-prompt-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[6000] hidden items-center justify-center p-6">
+            <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl p-8 text-center animate-in">
+                <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
+                    <i data-lucide="globe" class="w-8 h-8 text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold capitalize tracking-wide mb-3">Please select your timeone</h3>
+                <p class="text-xs text-white/50 leading-relaxed mb-8">To ensure your meetings are perfectly synced, we need you to confirm your local timezone.</p>
+                <button onclick="promptTimezoneSelection()" class="w-full bg-white text-black flex items-center justify-center px-6 py-3.5 rounded-xl font-bold capitalize tracking-wide hover:bg-zinc-200 transition-all">
+                    Select timezone
+                </button>
+            </div>
+        </div>
+
 <div id="settings-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center z-[6000] p-6 opacity-0 transition-opacity duration-300" onclick="closeSettingsModal()">
     <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-4xl h-[70vh] flex overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
         <div class="w-64 border-r border-white/10 bg-black flex flex-col">
@@ -1065,6 +1078,21 @@
             renderTzDropdown(text);
         }
 
+        function promptTimezoneSelection() {
+            const tzPrompt = document.getElementById('timezone-prompt-modal');
+            if (tzPrompt) {
+                tzPrompt.classList.add('hidden');
+                tzPrompt.classList.remove('flex');
+            }
+            
+            showPage('dashboard');
+            
+            const menu = document.getElementById('tz-dropdown-menu');
+            if (menu && menu.classList.contains('hidden')) {
+                toggleTzDropdown();
+            }
+        }
+
         function toggleTzDropdown() {
             const menu = document.getElementById('tz-dropdown-menu');
             const chevron = document.getElementById('tz-chevron');
@@ -1080,6 +1108,14 @@
                 chevron.style.transform = 'rotate(0deg)';
                 document.getElementById('tz-search').value = '';
                 renderTzDropdown(); // reset list
+                
+                if (currentUserProfile && !currentUserProfile.timezone) {
+                    const tzPrompt = document.getElementById('timezone-prompt-modal');
+                    if (tzPrompt) {
+                        tzPrompt.classList.remove('hidden');
+                        tzPrompt.classList.add('flex');
+                    }
+                }
             }
         }
 
@@ -1098,8 +1134,9 @@
         }
 
         async function selectTimezone(newTz) {
-            toggleTzDropdown();
+            if (currentUserProfile) currentUserProfile.timezone = newTz;
             currentUserTimezone = newTz;
+            toggleTzDropdown();
             updateTzSelectedText(newTz);
             
             if (authUserId) {
@@ -1589,6 +1626,12 @@
                     gModal.classList.remove('hidden');
                     gModal.classList.add('flex');
                 }
+            } else if (!currentUserProfile.timezone) {
+                const tzPrompt = document.getElementById('timezone-prompt-modal');
+                if (tzPrompt) {
+                    tzPrompt.classList.remove('hidden');
+                    tzPrompt.classList.add('flex');
+                }
             }
             
             lucide.createIcons();
@@ -1643,6 +1686,12 @@
                         if (gModal) {
                             gModal.classList.remove('hidden');
                             gModal.classList.add('flex');
+                        }
+                    } else if (!myProfile.timezone) {
+                        const tzPrompt = document.getElementById('timezone-prompt-modal');
+                        if (tzPrompt) {
+                            tzPrompt.classList.remove('hidden');
+                            tzPrompt.classList.add('flex');
                         }
                     }
                 }
