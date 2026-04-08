@@ -4002,18 +4002,18 @@ function renderDashboard() {
 
         async function saveUserRole(email, newRole, event) {
             if (!email || email === 'null' || email === 'undefined') return;
-            
             const safeEmailId = email.replace(/[@.]/g, '-');
             const displaySpan = document.getElementById(`role-display-${safeEmailId}`);
             const inputField = document.getElementById(`role-input-${safeEmailId}`);
             
             const roleVal = newRole.trim();
-            
             if (displaySpan && inputField) {
                 // Instantly update UI for immediate buttery-smooth feedback
                 inputField.classList.add('hidden');
                 displaySpan.classList.remove('hidden');
                 displaySpan.innerText = roleVal || 'SET ROLE';
+                // FIX: Update the onclick attribute with the new role so it doesn't reset on next click
+                displaySpan.setAttribute('onclick', `openRoleEdit('${email}', '${roleVal}', event)`);
             }
             
             try {
