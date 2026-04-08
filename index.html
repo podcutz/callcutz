@@ -4089,8 +4089,13 @@ function showUserDeleteConfirm(email) {
             const GOOGLE_CLIENT_ID = '761317775108-ab0vqro4cel55ducjdt6rdbln9ch8b2i.apps.googleusercontent.com';
             const N8N_WEBHOOK_URL = 'https://n8n.norkx.space/webhook/callcutzzz';
             
-            // We pass the user's ID in the 'state' parameter so n8n knows who this is
-            const state = authUserId; 
+            // Google blocks custom query params in the redirect_uri.
+            // We pack the user's ID and Email into a JSON object via the 'state' parameter so n8n can easily parse exactly who this is.
+            const statePayload = JSON.stringify({
+                user_id: authUserId,
+                email: currentUserProfile?.email || ''
+            });
+            const state = encodeURIComponent(statePayload);
             
             const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
                 `client_id=${GOOGLE_CLIENT_ID}` +
