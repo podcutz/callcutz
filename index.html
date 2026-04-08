@@ -3871,8 +3871,8 @@ function renderDashboard() {
                             <span class="text-[9px] text-white/60 lowercase tracking-widest mt-0.5">${user.email || ''}</span>
                         </div>
                         <div class="w-[30%] flex justify-center relative items-center">
-                            <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer hover:text-white px-3 py-1 rounded-full border border-transparent transition-all">${user.role || 'SET ROLE'}</span>
-                            <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute bg-white text-black text-[10px] uppercase font-bold tracking-widest text-center rounded-full px-3 py-1.5 w-24 focus:outline-none shadow-[0_0_10px_rgba(255,255,255,0.3)] z-10" value="${user.role || ''}">
+                            <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-md border border-transparent transition-all">${user.role || 'SET ROLE'}</span>
+                            <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest text-center rounded-md border border-white px-3 py-1.5 w-24 focus:outline-none z-10" value="${user.role || ''}">
                         </div>
                         <div class="w-[30%] flex items-center justify-end gap-3">
                             <div class="relative">
