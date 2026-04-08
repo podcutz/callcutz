@@ -183,31 +183,108 @@
     </div>
 
     <div id="page-login" class="fixed inset-0 z-[2000] bg-black hidden flex-col items-center justify-center">
-        <div class="w-full max-w-sm p-8 bg-[#050505] border border-white/10 rounded-2xl shadow-2xl">
-            <div class="flex items-center justify-center mb-8">
+        
+        <div class="w-full max-w-sm p-8 bg-[#050505] border border-white/10 rounded-2xl shadow-2xl min-h-[500px] flex flex-col relative">
+            <div class="flex items-center justify-center mb-8 shrink-0">
                 <img src="https://res.cloudinary.com/dobnqmfsg/image/upload/v1772612374/Untitled_design__1_-removebg-preview_ux1end.png" alt="Podcutz Logo" class="w-20 h-20 object-contain">
             </div>
-            <h2 class="text-2xl font-bold capitalize tracking-wide text-center mb-2">Podcutz</h2>
-            <p class="text-[10px] text-white/40 uppercase tracking-widest text-center mb-8">Log in to continue</p>
+            <h2 class="text-2xl font-bold capitalize tracking-wide text-center mb-2 shrink-0">Podcutz</h2>
             
-            <form id="login-form" class="space-y-4" onsubmit="event.preventDefault(); handleLogin(event);">
-                <div>
-                    <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Email</label>
-                    <input type="email" id="login-email" required class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors" placeholder="name@email.com">
+            <div id="auth-login-view" class="hidden flex-col flex-1">
+                <p class="text-[10px] text-white/40 uppercase tracking-widest text-center mb-8 shrink-0">Log in to continue</p>
+                <form id="login-form" class="space-y-4" onsubmit="event.preventDefault(); handleLogin(event);">
+                    <div>
+                        <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Email</label>
+                        <input type="email" id="login-email" required class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors" placeholder="name@email.com">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Password</label>
+                        <input type="password" id="login-password" required class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors" placeholder="••••••••">
+                        <div class="mt-1.5 flex justify-end">
+                            <button type="button" onclick="toggleAuthView('forgot')" class="text-[10px] text-white/60 hover:text-white hover:underline transition-colors">Forgot Password?</button>
+                        </div>
+                    </div>
+                    <button type="button" id="login-btn" onclick="handleLogin(event)" class="w-full bg-white text-black font-black uppercase tracking-widest text-xs py-3 rounded-lg hover:bg-zinc-200 transition-colors mt-4">
+                        Sign In
+                    </button>
+                    <p id="login-error" class="text-red-500 text-[10px] font-bold text-center mt-4 hidden"></p>
+                </form>
+                <div class="mt-auto pt-6 text-left">
+                    <button onclick="toggleAuthView('signup')" class="text-[11px] text-white hover:underline capitalize tracking-wide font-bold transition-all">Create A New Account.</button>
                 </div>
-                <div>
-                    <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Password</label>
-                    <input type="password" id="login-password" required class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors" placeholder="••••••••">
+            </div>
+
+            
+            <div id="auth-signup-view" class="flex flex-col flex-1">
+                <p class="text-[10px] text-white/40 uppercase tracking-widest text-center mb-2 shrink-0">Sign Up To Continue</p>
+                
+                <div class="flex-1 flex flex-col justify-center relative">
+                    <div id="signup-step-1" class="flex flex-col w-full space-y-4 animate-in">
+                        <div>
+                            <input type="email" id="signup-email" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-center text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="name@email.com">
+                        </div>
+                        <button onclick="processSignupStep1()" class="w-full bg-white text-black font-black uppercase tracking-widest text-xs py-3 rounded-lg hover:bg-zinc-200 transition-colors">Next</button>
+                        <p id="signup-error-1" class="text-red-500 text-[10px] font-bold text-center mt-2 hidden">Access Denied</p>
+                    </div>
+
+                    <div id="signup-step-2" class="hidden flex-col w-full space-y-4 animate-in">
+                        <div>
+                            <input type="text" id="signup-name" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-center text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="Full Name">
+                        </div>
+                        <button onclick="processSignupStep2()" class="w-full bg-white text-black font-black uppercase tracking-widest text-xs py-3 rounded-lg hover:bg-zinc-200 transition-colors">Next</button>
+                        <p id="signup-error-2" class="text-red-500 text-[10px] font-bold text-center mt-2 hidden"></p>
+                    </div>
+
+                    <div id="signup-step-3" class="hidden flex-col w-full space-y-4 animate-in">
+                        <div>
+                            <input type="password" id="signup-password" oninput="validateSignupPassword()" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="New Password">
+                            <div class="mt-3 space-y-1.5 pl-1">
+                                <p id="sup-req-length" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• At least 12 characters</p>
+                                <p id="sup-req-mix" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• Mix upper/lowercase, numbers, and symbols</p>
+                                <p id="sup-req-common" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• Avoid common passwords</p>
+                            </div>
+                        </div>
+                        <button id="signup-submit-btn" disabled onclick="processSignupStep3()" class="w-full bg-white/20 text-black/40 font-black uppercase tracking-widest text-xs py-3 rounded-lg transition-colors cursor-not-allowed mt-2">Create Account</button>
+                        <p id="signup-error-3" class="text-red-500 text-[10px] font-bold text-center mt-2 hidden"></p>
+                    </div>
                 </div>
-                <button type="button" id="login-btn" onclick="handleLogin(event)" class="w-full bg-white text-black font-black uppercase tracking-widest text-xs py-3 rounded-lg hover:bg-zinc-200 transition-colors mt-4">
-                    Sign In
-                </button>
-                <p id="login-error" class="text-red-500 text-[10px] font-bold text-center mt-4 hidden"></p>
-            </form>
+
+                <div class="mt-auto pt-6 text-left">
+                    <button onclick="toggleAuthView('login')" class="text-[11px] text-white hover:underline capitalize tracking-wide font-bold transition-colors">Already Have An Account?</button>
+                </div>
+            </div>
+
+            <div id="auth-forgot-view" class="hidden flex-col flex-1">
+                <div class="flex items-center space-x-4 mb-6 shrink-0">
+                    <button onclick="toggleAuthView('login')" class="p-2 -ml-2 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-all">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <h2 class="text-xl font-semibold text-zinc-100 tracking-tight">Recover Password</h2>
+                </div>
+                <div class="space-y-4 flex-1 flex flex-col justify-center">
+                    <div>
+                        <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">We will send you the details on email</label>
+                        <div class="flex items-center gap-3">
+                            <input type="email" id="login-forgot-email" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-all" placeholder="name@email.com">
+                            <button id="login-send-forgot-btn" onclick="sendForgotPasswordEmail('Log In Screen')" class="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-zinc-200 shrink-0">Send</button>
+                        </div>
+                    </div>
+                    <div id="login-forgot-success" class="hidden flex-col items-center justify-center text-center mt-6 animate-in">
+                        <div class="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center mx-auto mb-3 border-2 border-white/10">
+                            <i data-lucide="check" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-white tracking-tight mb-1">Check Email</h3>
+                        <p class="text-[10px] text-white/50 tracking-widest uppercase">Recovery link sent.</p>
+                    </div>
+                </div>
+                <div class="mt-auto pt-6 text-left">
+                    <button onclick="toggleAuthView('login')" class="text-[11px] text-white hover:underline capitalize tracking-wide font-bold transition-colors">Back to Log In</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="recovery-modal" class="fixed inset-0 z-[9000] bg-black/95 backdrop-blur-xl hidden flex-col items-center justify-center">
+    <div id="recovery-modal" class="fixed inset-0 z-[9000] bg-black/40 backdrop-blur-sm hidden flex-col items-center justify-center">
         <div class="w-full max-w-md p-8 bg-[#050505] border border-white/10 rounded-2xl shadow-2xl relative">
             <button id="close-recovery-btn" onclick="closeRecoveryModal()" class="hidden absolute top-4 right-4 p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
             
@@ -224,6 +301,7 @@
                     <div>
                         <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">New Password</label>
                         <input type="password" id="rec-new-password" oninput="validateRecoveryRequirements()" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-all" placeholder="Minimum 12 characters">
+                        <p id="rec-pass-error" class="text-[9px] text-red-500/80 font-bold mt-1 hidden"></p>
                         <div class="mt-3 space-y-1.5 pl-1">
                             <p id="rec-req-info" class="text-[9px] text-white/30 font-medium flex items-center gap-2">• No personal or company info</p>
                             <p id="rec-req-length" class="text-[9px] text-red-500/60 font-medium flex items-center gap-2 transition-colors">• At least 12 characters</p>
@@ -245,6 +323,54 @@
                 </div>
                 <h3 class="text-2xl font-bold text-white tracking-tight mb-2">Success!</h3>
                 <p class="text-xs text-white/50 tracking-widest uppercase">Your password has been reset.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="control-panel-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center z-[7000] opacity-0 transition-opacity duration-300" onclick="closeControlPanel()">
+        <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
+            
+            <div id="cp-delete-confirm" class="absolute inset-0 bg-black/40 backdrop-blur-sm z-[7050] hidden flex-col items-center justify-center">
+                <div class="bg-[#0a0a0a] border border-white/10 p-6 rounded-2xl shadow-2xl text-center w-3/4 max-w-sm">
+                    <p class="text-sm font-bold text-white mb-6">Do you want to completely delete this user?</p>
+                    <div class="flex items-center justify-center gap-4">
+                        <button onclick="executeDeleteUser()" class="flex-1 bg-black text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors">Yes</button>
+                        <button onclick="hideUserDeleteConfirm()" class="flex-1 bg-white text-black px-4 py-2 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-colors">No</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-b border-white/10 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-tight">App Access Control</h2>
+                    <p class="text-[10px] text-white/40 uppercase tracking-widest mt-1">Manage who can log into Podcutz</p>
+                </div>
+                <button onclick="closeControlPanel()" class="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div class="px-6 py-4 shrink-0 bg-transparent">
+                <div class="flex items-center justify-between mb-4">
+                    <label class="text-sm text-white capitalize font-bold tracking-wide block">Grant Access To New User</label>
+                    <button id="grant-access-btn" onclick="grantAccessUser()" class="px-5 py-2.5 bg-white text-black text-xs font-bold capitalize tracking-wide rounded-lg transition-all hover:bg-zinc-200 shrink-0 flex items-center h-fit">
+                        Grant Access <i data-lucide="plus" class="w-4 h-4 ml-1.5"></i>
+                    </button>
+                </div>
+                <div class="flex flex-col gap-3 w-full">
+                    <div>
+                        <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Email</label>
+                        <input type="email" id="grant-access-email" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="user@email.com">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Role</label>
+                        <input type="text" id="grant-access-role" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="e.g. Manager">
+                    </div>
+                </div>
+                <p id="grant-access-error" class="text-red-500 text-[10px] font-bold mt-2 hidden"></p>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 pb-32">
+                <div id="access-list-container" class="space-y-2 relative">
+                    </div>
             </div>
         </div>
     </div>
@@ -307,7 +433,7 @@
         </div>
 
         <div class="px-2 pt-4 pb-4 border-t border-white/5 relative">
-            <div id="account-popup-menu" class="hidden absolute bottom-full left-2 mb-2 w-[calc(100%-16px)] bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl z-[5000] flex-col overflow-hidden">
+            <div id="account-popup-menu" class="hidden absolute bottom-full left-2 mb-2 w-48 bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl z-[5000] flex-col overflow-hidden">
                 <div class="p-3 border-b border-white/10 flex items-center space-x-3">
                     <div id="popup-user-avatar" class="w-8 h-8 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center text-[10px] font-bold border border-white/10 bg-cover bg-center"></div>
                     <div class="flex flex-col overflow-hidden">
@@ -319,6 +445,10 @@
                         <button onclick="event.stopPropagation(); openProfileModal(); toggleAccountMenu();" class="w-full flex items-center space-x-3 px-3 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
                             <i data-lucide="user" class="w-4 h-4"></i>
                             <span>Profile</span>
+                        </button>
+                        <button id="operator-panel-btn" onclick="event.stopPropagation(); openControlPanel(); toggleAccountMenu();" class="hidden w-full items-center space-x-3 px-3 py-2.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors">
+                            <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                            <span>Control Panel</span>
                         </button>
                         <button onclick="event.stopPropagation(); handleLogout(); toggleAccountMenu();" class="w-full flex items-center space-x-3 px-3 py-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors">
                             <i data-lucide="log-out" class="w-4 h-4"></i>
@@ -528,7 +658,8 @@
              </div>
         </div>
 <!-- GLOBAL SUCCESS OVERLAY -->
-<div id="google-sync-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[6000] hidden items-center justify-center p-6">
+
+<div id="google-sync-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[6000] hidden items-center justify-center p-6">
             <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl p-8 text-center animate-in">
                 <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
                     <i data-lucide="calendar-days" class="w-8 h-8 text-white"></i>
@@ -547,7 +678,7 @@
             </div>
         </div>
 
-<div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[6000] p-6 opacity-0 transition-opacity duration-300" onclick="closeSettingsModal()">
+<div id="settings-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center z-[6000] p-6 opacity-0 transition-opacity duration-300" onclick="closeSettingsModal()">
     <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-4xl h-[70vh] flex overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
         <div class="w-64 border-r border-white/10 bg-black flex flex-col">
             <div class="p-4 border-b border-white/10 flex items-center space-x-3">
@@ -570,7 +701,7 @@
     </div>
 </div>
 
-<div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-xl hidden items-center justify-center z-[5000] opacity-0 transition-opacity duration-500">
+<div id="modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center z-[5000] opacity-0 transition-opacity duration-500">
             <div id="modal-container" class="bg-[#09090b] border border-white/10 rounded-2xl px-8 pb-8 pt-4 w-full max-w-[450px] shadow-[0_32px_64px_-15px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col min-h-[400px]" onclick="event.stopPropagation()">
                 <button onclick="closeProfileModal()" class="absolute top-4 right-4 z-20 text-zinc-500 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></button>
                 <div id="profile-view" class="flex flex-col items-start w-full flex-grow pt-4">
@@ -691,7 +822,7 @@
                                 <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">We will send you the details on email</label>
                                 <div class="flex items-center gap-3">
                                     <input type="email" id="forgot-email-input" readonly class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white/30 transition-all opacity-70 cursor-not-allowed">
-                                    <button id="send-forgot-btn" onclick="sendForgotPasswordEmail()" class="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-zinc-200 shrink-0">Send</button>
+                                    <button id="send-forgot-btn" onclick="sendForgotPasswordEmail('With In App')" class="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-zinc-200 shrink-0">Send</button>
                                 </div>
                             </div>
                         </div>
@@ -735,7 +866,7 @@
         <p id="success-sub" class="text-[11px] text-white/40 uppercase tracking-widest"></p>
     </div>
 </div>
-<div id="add-guest-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-6">
+<div id="add-guest-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-6">
                 <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-md max-h-[70vh] overflow-hidden flex flex-col animate-in shadow-2xl">
                     <div class="px-6 py-4 border-b border-white/10 flex justify-between items-center">
                          <div>
@@ -773,7 +904,7 @@
             Timezone updated
         </div>
 
-        <div id="callDetailsModal" class="hidden fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity">
+        <div id="callDetailsModal" class="hidden fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity">
             <div class="relative w-full max-w-lg bg-[#050505] border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] overflow-hidden">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
                      <div class="flex items-center space-x-3">
@@ -786,7 +917,7 @@
                     <button onclick="closeDetailsModal()" class="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
                 </div>
                 <div class="px-6 py-6 space-y-6">
-                    <div id="cd-delete-confirm" class="absolute inset-0 bg-black/60 backdrop-blur-sm z-[4050] hidden flex-col items-center justify-center">
+                    <div id="cd-delete-confirm" class="absolute inset-0 bg-black/40 backdrop-blur-sm z-[4050] hidden flex-col items-center justify-center">
                         <div class="bg-[#0a0a0a] border border-white/10 p-6 rounded-2xl shadow-2xl text-center w-3/4 max-w-sm">
                             <p class="text-sm font-bold text-white mb-6">Do you want to delete this meeting?</p>
                             <div class="flex items-center justify-center gap-4">
@@ -1116,19 +1247,47 @@
             errorMsg.classList.add('hidden');
 
             try {
-                // 1. Authenticate user using the renamed client
+                // 1. BIG TECH SECURE CHECK: Query Auth Users Directly via RPC
+                const { data: accountExists } = await supabaseClient.rpc('check_account_exists', { lookup_email: email });
+                if (accountExists === false) {
+                    errorMsg.innerText = "Account Does Not Exists.";
+                    errorMsg.classList.remove('hidden');
+                    btn.innerText = 'Sign In';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // 2. Authenticate user
                 const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
-         
-               });
+                });
 
-                if (authError) throw authError;
+                if (authError) {
+                    errorMsg.innerText = accountExists === true ? "Invalid Password." : "Account Does Not Exists.";
+                    errorMsg.classList.remove('hidden');
+                    btn.innerText = 'Sign In';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // 3. Check Access Control Vault (case-insensitive)
+                const { data: accessData } = await supabaseClient.from('access_control').select('status').ilike('email', email).maybeSingle();
+                if (!accessData || accessData.status !== 'Active') {
+                    await supabaseClient.auth.signOut();
+                    errorMsg.innerText = "Access Denied";
+                    errorMsg.classList.remove('hidden');
+                    btn.innerText = 'Sign In';
+                    btn.disabled = false;
+                    return;
+                }
+
                 authUserId = authData.user.id;
-// 2. Fetch profile safely
+
+                // 3. Fetch profile safely (Bypasses RLS now that user is authenticated)
                 const { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('full_name, role, timezone')
+                    .select('full_name, role, timezone, account_level, google_refresh_token')
                     .eq('id', authData.user.id)
                     .maybeSingle();
 
@@ -1136,9 +1295,18 @@
 
                 // Fallback to email name if the profile row is missing or blocked by RLS
                 currentUserProfile = profileData ||
-                { full_name: email.split('@')[0], role: 'member' };
+                { full_name: email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null };
                 currentUserProfile.email = email;
+
+                // UNLOCK OPERATOR UI
+                if (currentUserProfile.account_level === 'Operator') {
+                    const opBtn = document.getElementById('operator-panel-btn');
+                    opBtn.classList.remove('hidden');
+                    opBtn.classList.add('flex');
+                }
+
                 completeLogin();
+
             } catch (error) {
                 console.error("Login Error:", error);
                 errorMsg.innerText = error.message || "Invalid login credentials.";
@@ -1152,6 +1320,210 @@
             if (!supabaseClient) return;
             await supabaseClient.auth.signOut();
             window.location.reload();
+        }
+
+        function toggleAuthView(view) {
+            const loginView = document.getElementById('auth-login-view');
+            const signupView = document.getElementById('auth-signup-view');
+            const forgotView = document.getElementById('auth-forgot-view');
+            
+            // Hide all first
+            loginView.classList.add('hidden'); loginView.classList.remove('flex');
+            signupView.classList.add('hidden'); signupView.classList.remove('flex');
+            if (forgotView) { forgotView.classList.add('hidden'); forgotView.classList.remove('flex'); }
+            
+            if (view === 'signup') {
+                signupView.classList.remove('hidden');
+                signupView.classList.add('flex');
+                
+                // Reset signup states
+                document.getElementById('signup-step-1').classList.remove('hidden');
+                document.getElementById('signup-step-1').classList.add('flex');
+                document.getElementById('signup-step-2').classList.add('hidden');
+                document.getElementById('signup-step-2').classList.remove('flex');
+                document.getElementById('signup-step-3').classList.add('hidden');
+                document.getElementById('signup-step-3').classList.remove('flex');
+                document.getElementById('signup-email').value = '';
+                document.getElementById('signup-name').value = '';
+                document.getElementById('signup-password').value = '';
+                document.getElementById('signup-error-1').classList.add('hidden');
+            } else if (view === 'forgot') {
+                if (forgotView) {
+                    forgotView.classList.remove('hidden');
+                    forgotView.classList.add('flex');
+                    document.getElementById('login-forgot-email').value = document.getElementById('login-email').value;
+                    document.getElementById('login-forgot-success').classList.add('hidden');
+                    document.getElementById('login-forgot-success').classList.remove('flex');
+                }
+                lucide.createIcons();
+            } else {
+                loginView.classList.remove('hidden');
+                loginView.classList.add('flex');
+            }
+        }
+
+        async function processSignupStep1() {
+            const email = document.getElementById('signup-email').value.trim().toLowerCase();
+            const err = document.getElementById('signup-error-1');
+            const btn = document.querySelector('#signup-step-1 button');
+            if (!email) return;
+
+            btn.innerText = "Checking...";
+            btn.disabled = true;
+
+            try {
+                // 1. BIG TECH SECURE CHECK: Query Auth Users Directly via RPC
+                const { data: accountExists } = await supabaseClient.rpc('check_account_exists', { lookup_email: email });
+                
+                if (accountExists === true) {
+                    err.innerText = "Account Already Exists With This Email.";
+                    err.classList.remove('hidden');
+                    btn.innerText = "NEXT";
+                    btn.disabled = false;
+                    return;
+                }
+
+                // 2. Check Access Control Vault (case-insensitive)
+                const { data, error } = await supabaseClient.from('access_control').select('status').ilike('email', email).maybeSingle();
+
+                if (data && data.status === 'Active') {
+                    err.classList.add('hidden');
+                    document.getElementById('signup-step-1').classList.add('hidden');
+                    document.getElementById('signup-step-1').classList.remove('flex');
+                    document.getElementById('signup-step-2').classList.remove('hidden');
+                    document.getElementById('signup-step-2').classList.add('flex');
+                } else {
+                    err.innerText = "Access Denied";
+                    err.classList.remove('hidden');
+                }
+            } catch (e) {
+                err.innerText = "Error verifying access.";
+                err.classList.remove('hidden');
+            }
+            
+            btn.innerText = "NEXT";
+            btn.disabled = false;
+        }
+
+        function processSignupStep2() {
+            const name = document.getElementById('signup-name').value.trim();
+            if (!name) {
+                document.getElementById('signup-error-2').innerText = "Please enter your name";
+                document.getElementById('signup-error-2').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('signup-error-2').classList.add('hidden');
+            
+            document.getElementById('signup-step-2').classList.add('hidden');
+            document.getElementById('signup-step-2').classList.remove('flex');
+            document.getElementById('signup-step-3').classList.remove('hidden');
+            document.getElementById('signup-step-3').classList.add('flex');
+        }
+
+        function validateSignupPassword() {
+            const val = document.getElementById('signup-password').value;
+            const btn = document.getElementById('signup-submit-btn');
+
+            const commonPasswords = ['password123456', '123456789012', 'qwertyuiopas', 'administrator1', 'changeme1234'];
+            
+            const checks = {
+                length: val.length >= 12,
+                mix: /[a-z]/.test(val) && /[A-Z]/.test(val) && /[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val),
+                common: !commonPasswords.includes(val.toLowerCase()) && !val.toLowerCase().includes('123456')
+            };
+
+            const updateUI = (id, met) => {
+                const el = document.getElementById(id);
+                if (met) el.classList.replace('text-red-500/60', 'text-green-500/60');
+                else el.classList.replace('text-green-500/60', 'text-red-500/60');
+            };
+
+            updateUI('sup-req-length', checks.length);
+            updateUI('sup-req-mix', checks.mix);
+            updateUI('sup-req-common', checks.common);
+
+            if (checks.length && checks.mix && checks.common) {
+                btn.disabled = false;
+                btn.classList.replace('bg-white/20', 'bg-white');
+                btn.classList.replace('text-black/40', 'text-black');
+                btn.classList.remove('cursor-not-allowed');
+            } else {
+                btn.disabled = true;
+                btn.classList.replace('bg-white', 'bg-white/20');
+                btn.classList.replace('text-black', 'text-black/40');
+                btn.classList.add('cursor-not-allowed');
+            }
+        }
+
+        async function processSignupStep3() {
+            const email = document.getElementById('signup-email').value.trim();
+            const name = document.getElementById('signup-name').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const btn = document.getElementById('signup-submit-btn');
+            const err = document.getElementById('signup-error-3');
+
+            btn.innerText = "Creating...";
+            btn.disabled = true;
+            err.classList.add('hidden');
+
+            try {
+                // Fetch pre-assigned role
+                const { data: accessData } = await supabaseClient.from('access_control').select('role').ilike('email', email).maybeSingle();
+                const userRole = accessData?.role || 'Member';
+
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: name,
+                            role: userRole
+                        }
+                    }
+                });
+                
+                if (error) {
+                    if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('user already exists')) {
+                        throw new Error("Account Already Exists With This Email.");
+                    }
+                    throw error;
+                }
+                
+                // The Database Trigger 'handle_new_user' automatically handles linking orphaned profiles or creating new ones securely!
+                if (data && data.user) {
+                    // Sync Name and Role back to the access control table
+                    await supabaseClient.from('access_control').update({ name: name, role: userRole }).ilike('email', email);
+                    
+                    // Assign global states for auto-login
+                    authUserId = data.user.id;
+                    currentUserProfile = { full_name: name, role: userRole, email: email, account_level: 'Member', google_refresh_token: null };
+                }
+
+                // Success
+                btn.innerText = "Account Created!";
+                btn.classList.replace('bg-white', 'bg-green-500');
+                btn.classList.replace('text-black', 'text-white');
+                
+                setTimeout(() => {
+                    // Auto-Login Instantly
+                    toggleAuthView('login'); // Hides the signup UI
+                    completeLogin(); // Boot up the app!
+                    
+                    // Reset Button UI for future
+                    btn.innerText = "Create Account";
+                    btn.classList.replace('bg-green-500', 'bg-white');
+                    btn.classList.replace('text-white', 'text-black');
+                    document.getElementById('signup-email').value = '';
+                    document.getElementById('signup-name').value = '';
+                    document.getElementById('signup-password').value = '';
+                }, 1000);
+            } catch (error) {
+                console.error("Signup Error:", error);
+                err.innerText = error.message || "Failed to create account.";
+                err.classList.remove('hidden');
+                btn.innerText = "Create Account";
+                btn.disabled = false;
+            }
         }
 
         async function completeLogin() {
@@ -1208,6 +1580,15 @@
             if (urlParams.get('tab') === 'requests') {
                 switchTab('requests');
                 window.history.replaceState(null, '', window.location.pathname);
+            }
+            
+            // Automatically prompt for Google Sync if token is not present
+            if (!currentUserProfile.google_refresh_token) {
+                const gModal = document.getElementById('google-sync-modal');
+                if (gModal) {
+                    gModal.classList.remove('hidden');
+                    gModal.classList.add('flex');
+                }
             }
             
             lucide.createIcons();
@@ -1429,14 +1810,31 @@
 
                 const { data: profileData } = await supabaseClient
                     .from('profiles')
-                    .select('full_name, role, timezone')
+                    .select('full_name, role, timezone, account_level, google_refresh_token')
                     .eq('id', session.user.id)
                     .maybeSingle();
-                
                 // Fallback to email name if the profile row is missing or blocked by RLS
                 currentUserProfile = profileData ||
-                { full_name: session.user.email.split('@')[0], role: 'member' };
+                { full_name: session.user.email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null };
                 currentUserProfile.email = session.user.email;
+                
+                // RBAC SECURITY: Check if user has been inactivated or removed
+                const { data: accessData } = await supabaseClient.from('access_control').select('status').eq('email', session.user.email).maybeSingle();
+                if (!accessData || accessData.status !== 'Active') {
+                    await supabaseClient.auth.signOut();
+                    const loginErr = document.getElementById('login-error');
+                    loginErr.innerText = "Access Denied";
+                    loginErr.classList.remove('hidden');
+                    return;
+                }
+
+                // UNLOCK OPERATOR UI
+                if (currentUserProfile.account_level === 'Operator') {
+                    const opBtn = document.getElementById('operator-panel-btn');
+                    opBtn.classList.remove('hidden');
+                    opBtn.classList.add('flex');
+                }
+
                 completeLogin();
                 
                 // If it was a password reset link, trigger the modal securely
@@ -3208,41 +3606,49 @@ function renderDashboard() {
             document.getElementById('password-form-content').classList.add('flex');
         }
 
-        async function sendForgotPasswordEmail() {
-            const emailInput = document.getElementById('forgot-email-input').value.trim();
+        async function sendForgotPasswordEmail(problemSource = 'With In App') {
+            const isLoginScreen = problemSource === 'Log In Screen';
+            const emailInput = document.getElementById(isLoginScreen ? 'login-forgot-email' : 'forgot-email-input').value.trim();
             if (!emailInput) return;
             
-            const btn = document.getElementById('send-forgot-btn');
+            const btn = document.getElementById(isLoginScreen ? 'login-send-forgot-btn' : 'send-forgot-btn');
             btn.innerText = "SENDING...";
             btn.disabled = true;
-            
+
             try {
                 // Call n8n Webhook
                 await fetch('https://n8n.norkx.space/webhook/forgottenone', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: emailInput })
+                    body: JSON.stringify({ email: emailInput, Problem: problemSource })
                 });
-                
+
                 // Show Success
-                document.getElementById('forgot-password-content').classList.add('hidden');
-                document.getElementById('forgot-password-content').classList.remove('flex');
-                
-                const successMsg = document.getElementById('password-success-message');
-                successMsg.querySelector('h3').innerText = "Check Email";
-                successMsg.querySelector('p').innerText = "Recovery link sent to your inbox.";
-                successMsg.classList.remove('hidden');
-                successMsg.classList.add('flex');
-                
-                setTimeout(() => {
-                    hidePasswordView();
-                    // Reset text back to normal default
+                if (isLoginScreen) {
+                    const successMsg = document.getElementById('login-forgot-success');
+                    successMsg.classList.remove('hidden');
+                    successMsg.classList.add('flex');
                     setTimeout(() => {
-                        successMsg.querySelector('h3').innerText = "Success!";
-                        successMsg.querySelector('p').innerText = "Your password has been reset.";
-                    }, 500);
-                }, 4000);
-                
+                        toggleAuthView('login');
+                    }, 4000);
+                } else {
+                    document.getElementById('forgot-password-content').classList.add('hidden');
+                    document.getElementById('forgot-password-content').classList.remove('flex');
+                    const successMsg = document.getElementById('password-success-message');
+                    successMsg.querySelector('h3').innerText = "Check Email";
+                    successMsg.querySelector('p').innerText = "Recovery link sent to your inbox.";
+                    successMsg.classList.remove('hidden');
+                    successMsg.classList.add('flex');
+
+                    setTimeout(() => {
+                        hidePasswordView();
+                        // Reset text back to normal default
+                        setTimeout(() => {
+                            successMsg.querySelector('h3').innerText = "Success!";
+                            successMsg.querySelector('p').innerText = "Your password has been reset.";
+                        }, 500);
+                    }, 4000);
+                }
             } catch(e) {
                 console.error(e);
                 alert("Failed to send reset email");
@@ -3257,6 +3663,8 @@ function renderDashboard() {
             const val = document.getElementById('rec-new-password').value;
             const confirm = document.getElementById('rec-confirm-password').value;
             const btn = document.getElementById('save-recovery-btn');
+            
+            document.getElementById('rec-pass-error').classList.add('hidden');
 
             const commonPasswords = ['password123456', '123456789012', 'qwertyuiopas', 'administrator1', 'changeme1234'];
             
@@ -3300,7 +3708,10 @@ function renderDashboard() {
             const { error } = await supabaseClient.auth.updateUser({ password: newPwd });
 
             if (error) {
-                alert("Error updating password: " + error.message);
+                const errorMsg = document.getElementById('rec-pass-error');
+                errorMsg.innerText = error.message;
+                errorMsg.classList.remove('hidden');
+                
                 btn.innerText = "SAVE PASSWORD";
                 btn.disabled = false;
             } else {
@@ -3326,6 +3737,8 @@ function renderDashboard() {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             
+            document.getElementById('rec-pass-error').classList.add('hidden');
+            
             // Clean the URL hash so it doesn't re-trigger on refresh
             window.history.replaceState(null, '', window.location.pathname + window.location.search);
         }
@@ -3342,6 +3755,212 @@ function renderDashboard() {
             });
         }
 
+        // --- OPERATOR CONTROL PANEL LOGIC ---
+        function openControlPanel() {
+            const modal = document.getElementById('control-panel-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.replace('opacity-0', 'opacity-100'), 10);
+            fetchAccessList();
+        }
+
+        
+        function closeControlPanel() {
+            const modal = document.getElementById('control-panel-modal');
+            modal.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.getElementById('grant-access-error').classList.add('hidden');
+            }, 300);
+            if(typeof hideUserDeleteConfirm === 'function') hideUserDeleteConfirm();
+        }
+
+        async function fetchAccessList() {
+            const container = document.getElementById('access-list-container');
+            container.innerHTML = '<div class="text-white/40 text-xs text-center py-4">Loading...</div>';
+            
+            const { data, error } = await supabaseClient.from('access_control').select('*').order('created_at', { ascending: false });
+            if (error) {
+                container.innerHTML = '<div class="text-red-500 text-xs text-center py-4">Error loading access list.</div>';
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="text-white/40 text-xs text-center py-4">No users granted access yet.</div>';
+                return;
+            }
+            
+            // Fetch all profiles to auto-sync names for existing users
+            const { data: profilesData } = await supabaseClient.from('profiles').select('email, full_name');
+            container.innerHTML = '';
+            data.forEach(user => {
+                const isActive = user.status === 'Active';
+                const statusColor = isActive ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-zinc-400 bg-white/5 border-white/10';
+                
+                // Auto-sync name from profiles if available (Added strict null-checks to prevent JS crashing loop)
+                const matchedProfile = profilesData?.find(p => p.email && user.email && p.email.toLowerCase() === user.email.toLowerCase());
+                const displayName = matchedProfile ? matchedProfile.full_name : (user.name || 'New Teammate');
+                
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                        <div class="flex flex-col w-[40%]">
+                            <span class="text-sm font-bold text-white capitalize tracking-wide">${displayName}</span>
+                            <span class="text-[9px] text-white/60 lowercase tracking-widest mt-0.5">${user.email || ''}</span>
+                        </div>
+                        <div class="w-[30%] flex justify-center">
+                            ${user.role ? `<span class="text-[10px] text-white/40 uppercase tracking-widest text-center">${user.role}</span>` : ''}
+                        </div>
+                        <div class="w-[30%] flex items-center justify-end gap-3">
+                            <div class="relative">
+                                <button onclick="toggleStatusDropdown('${user.email}', event)" class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded border transition-colors flex items-center gap-1.5 ${statusColor}">
+                                    <span>${user.status}</span>
+                                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                </button>
+                                <div id="status-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full right-0 mt-1 w-28 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl z-[8000] overflow-hidden">
+                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Active')" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer">Active</div>
+                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Inactive')" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer">Inactive</div>
+                                </div>
+                            </div>
+                            <button onclick="showUserDeleteConfirm('${user.email}')" class="p-1.5 text-red-400 hover:text-white hover:bg-red-500 rounded transition-colors" title="Delete User">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        async function grantAccessUser() {
+            const emailInput = document.getElementById('grant-access-email');
+            const roleInput = document.getElementById('grant-access-role');
+            const err = document.getElementById('grant-access-error');
+            const btn = document.getElementById('grant-access-btn');
+            const email = emailInput.value.trim().toLowerCase();
+            const role = roleInput.value.trim();
+            
+            if (!email || !role) {
+                err.innerText = "Both Email and Role are required.";
+                err.classList.remove('hidden');
+                return;
+            }
+            
+            err.classList.add('hidden');
+            btn.innerHTML = `Granting... <i data-lucide="loader-2" class="w-[18px] h-[18px] ml-1.5 animate-spin"></i>`;
+            lucide.createIcons();
+            btn.disabled = true;
+
+            try {
+                // 1. Check if it already exists in the table
+                const { data: existingUser } = await supabaseClient.from('access_control').select('email').eq('email', email).maybeSingle();
+                
+                if (existingUser) {
+                    err.innerText = "User already has access.";
+                    err.classList.remove('hidden');
+                    btn.innerHTML = `Grant Access <i data-lucide="plus" class="w-[18px] h-[18px] ml-1.5"></i>`;
+                    lucide.createIcons();
+                    btn.disabled = false;
+                    return;
+                }
+
+                // 2. Fetch current active session ID safely
+                const { data: sessionData } = await supabaseClient.auth.getSession();
+                const currentUid = sessionData?.session?.user?.id || null;
+
+                // 3. Insert the new email (with role & default name)
+                const { error } = await supabaseClient.from('access_control').insert([{ email: email, status: 'Active', added_by: currentUid, role: role, name: 'New Teammate' }]);
+                
+                if (error) {
+                    // Show the exact Supabase backend error if it fails
+                    if (error.message.includes('row-level security')) {
+                        err.innerText = "RLS Error: Please ensure you ran the SQL fix for WITH CHECK inserts.";
+                    } else {
+                        err.innerText = error.message || "Failed to grant access.";
+                    }
+                    err.classList.remove('hidden');
+                } else {
+                    emailInput.value = '';
+                    roleInput.value = '';
+                    fetchAccessList();
+                }
+            } catch (e) {
+                err.innerText = "An unexpected error occurred.";
+                err.classList.remove('hidden');
+            }
+            
+            btn.innerHTML = `Grant Access <i data-lucide="plus" class="w-[18px] h-[18px] ml-1.5"></i>`;
+            lucide.createIcons();
+            btn.disabled = false;
+        }
+
+        function toggleStatusDropdown(email, event) {
+            event.stopPropagation();
+            const safeEmailId = email.replace(/[@.]/g, '-');
+            document.querySelectorAll('[id^="status-menu-"]').forEach(m => {
+                if (m.id !== `status-menu-${safeEmailId}`) m.classList.add('hidden');
+            });
+            const menu = document.getElementById(`status-menu-${safeEmailId}`);
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        async function updateUserStatusDropdown(email, newStatus) {
+            const safeEmailId = email.replace(/[@.]/g, '-');
+            const menu = document.getElementById(`status-menu-${safeEmailId}`);
+            if (menu) menu.classList.add('hidden');
+            
+            await supabaseClient.from('access_control').update({ status: newStatus }).eq('email', email);
+            fetchAccessList();
+        }
+        
+        document.addEventListener('click', () => {
+            document.querySelectorAll('[id^="status-menu-"]').forEach(m => m.classList.add('hidden'));
+        });
+
+function showUserDeleteConfirm(email) {
+            window.userEmailToDelete = email;
+            const dc = document.getElementById('cp-delete-confirm');
+            dc.classList.remove('hidden');
+            dc.classList.add('flex');
+        }
+
+        function hideUserDeleteConfirm() {
+            const dc = document.getElementById('cp-delete-confirm');
+            dc.classList.add('hidden');
+            dc.classList.remove('flex');
+            window.userEmailToDelete = null;
+        }
+
+        async function executeDeleteUser() {
+            const email = window.userEmailToDelete;
+            if (!email) return;
+            
+            hideUserDeleteConfirm();
+            
+            // Optimistic UI Update
+            const container = document.getElementById('access-list-container');
+            container.innerHTML = '<div class="text-white/40 text-xs text-center py-4">Deleting...</div>';
+
+            // Fetch their actual UUID if they have an account
+            const { data: profData } = await supabaseClient.from('profiles').select('id').eq('email', email).maybeSingle();
+            const payload = profData && profData.id ? { user_id: profData.id, email: email } : { email: email };
+            
+            // 1. Send to n8n Webhook for hard deletion in Supabase Auth ONLY
+            await fetch('https://n8n.norkx.space/webhook/harddeleteuser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(e => console.error("Webhook failed", e));
+            
+            // 2. Remove their permission to log in
+            await supabaseClient.from('access_control').delete().eq('email', email);
+            
+            // Note: We intentionally DO NOT delete from the 'profiles' table here
+            // to preserve their historical data in the app.
+            
+            fetchAccessList();
+        }
+
         async function saveNameEdit() {
             const input = document.getElementById('modal-input-name');
             const display = document.getElementById('modal-display-name');
@@ -3353,6 +3972,10 @@ function renderDashboard() {
                 lucide.createIcons();
                 try {
                     await supabaseClient.from('profiles').update({ full_name: newName }).eq('id', authUserId);
+                    
+                    // Sync the new name to Access Control in Realtime
+                    await supabaseClient.from('access_control').update({ name: newName }).ilike('email', currentUserProfile.email);
+
                     currentUserProfile.full_name = newName;
                     display.innerText = newName;
                     
