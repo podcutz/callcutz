@@ -1127,10 +1127,19 @@
             }
         });
 
+        
         function updateTzSelectedText(tzValue) {
             const found = globalTimezoneList.find(t => t.val === tzValue);
             const el = document.getElementById('tz-selected-text');
-            if(el && found) el.innerText = found.label;
+            if (el) {
+                if (!currentUserProfile || !currentUserProfile.timezone) {
+                    el.innerText = "Select Timezone";
+                } else if (found) {
+                    el.innerText = found.label;
+                } else {
+                    el.innerText = tzValue || "Select Timezone";
+                }
+            }
         }
 
         async function selectTimezone(newTz) {
