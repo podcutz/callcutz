@@ -685,7 +685,7 @@
                 </div>
                 <h3 class="text-xl font-bold capitalize tracking-wide mb-3">Please select your timeone</h3>
                 <p class="text-xs text-white/50 leading-relaxed mb-8">To ensure your meetings are perfectly synced, we need you to confirm your local timezone.</p>
-                <button onclick="promptTimezoneSelection()" class="w-full bg-white text-black flex items-center justify-center px-6 py-3.5 rounded-xl font-bold capitalize tracking-wide hover:bg-zinc-200 transition-all">
+                <button onclick="promptTimezoneSelection(event)" class="w-full bg-white text-black flex items-center justify-center px-6 py-3.5 rounded-xl font-bold capitalize tracking-wide hover:bg-zinc-200 transition-all">
                     Select timezone
                 </button>
             </div>
@@ -1078,7 +1078,10 @@
             renderTzDropdown(text);
         }
 
-        function promptTimezoneSelection() {
+        function promptTimezoneSelection(event) {
+            // Stop the click from bubbling to the document body, which prevents the auto-close safety script from instantly firing!
+            if (event) event.stopPropagation(); 
+            
             const tzPrompt = document.getElementById('timezone-prompt-modal');
             if (tzPrompt) {
                 tzPrompt.classList.add('hidden');
