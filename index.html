@@ -3818,8 +3818,8 @@ function renderDashboard() {
                                     <i data-lucide="chevron-down" class="w-3 h-3"></i>
                                 </button>
                                 <div id="status-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full right-0 mt-1 w-28 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl z-[8000] overflow-hidden">
-                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Active')" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer">Active</div>
-                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Inactive')" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer">Inactive</div>
+                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Active', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer">Active</div>
+                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Inactive', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer">Inactive</div>
                                 </div>
                             </div>
                             <button onclick="showUserDeleteConfirm('${user.email}')" class="p-1.5 text-red-400 hover:text-white hover:bg-red-500 rounded transition-colors" title="Delete User">
@@ -3904,13 +3904,21 @@ function renderDashboard() {
             if (menu) menu.classList.toggle('hidden');
         }
 
-        async function updateUserStatusDropdown(email, newStatus) {
+        async function updateUserStatusDropdown(email, newStatus, event) {
+            if (event) event.stopPropagation(); // Prevents the click from bouncing to the background
+            if (!email || email === 'null' || email === 'undefined') return;
+            
             const safeEmailId = email.replace(/[@.]/g, '-');
             const menu = document.getElementById(`status-menu-${safeEmailId}`);
             if (menu) menu.classList.add('hidden');
             
-            await supabaseClient.from('access_control').update({ status: newStatus }).eq('email', email);
-            fetchAccessList();
+            try {
+                // Use ILIKE for case-insensitive matching to guarantee the database row is found and updated
+                await supabaseClient.from('access_control').update({ status: newStatus }).ilike('email', email);
+                fetchAccessList();
+            } catch (err) {
+                console.error("Update failed:", err);
+            }
         }
         
         document.addEventListener('click', () => {
