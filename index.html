@@ -1109,7 +1109,7 @@
                 document.getElementById('tz-search').value = '';
                 renderTzDropdown(); // reset list
                 
-                if (currentUserProfile && !currentUserProfile.timezone) {
+                if (currentUserProfile && (!currentUserProfile.timezone || currentUserProfile.timezone === 'UTC')) {
                     const tzPrompt = document.getElementById('timezone-prompt-modal');
                     if (tzPrompt) {
                         tzPrompt.classList.remove('hidden');
@@ -1132,7 +1132,7 @@
             const found = globalTimezoneList.find(t => t.val === tzValue);
             const el = document.getElementById('tz-selected-text');
             if (el) {
-                if (!currentUserProfile || !currentUserProfile.timezone) {
+                if (!currentUserProfile || !currentUserProfile.timezone || currentUserProfile.timezone === 'UTC') {
                     el.innerText = "Select Timezone";
                 } else if (found) {
                     el.innerText = found.label;
@@ -1333,7 +1333,7 @@
                 // 3. Fetch profile safely (Bypasses RLS now that user is authenticated)
                 const { data: profileData, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('full_name, role, timezone, account_level, google_refresh_token')
+                    .select('full_name, role, timezone, account_level, google_refresh_token, google_access_token')
                     .eq('id', authData.user.id)
                     .maybeSingle();
 
@@ -1341,7 +1341,7 @@
 
                 // Fallback to email name if the profile row is missing or blocked by RLS
                 currentUserProfile = profileData ||
-                { full_name: email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null };
+                { full_name: email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null, google_access_token: null };
                 currentUserProfile.email = email;
 
                 // UNLOCK OPERATOR UI
@@ -1542,7 +1542,7 @@
                     
                     // Assign global states for auto-login
                     authUserId = data.user.id;
-                    currentUserProfile = { full_name: name, role: userRole, email: email, account_level: 'Member', google_refresh_token: null };
+                    currentUserProfile = { full_name: name, role: userRole, email: email, account_level: 'Member', google_refresh_token: null, google_access_token: null };
                 }
 
                 // Success
@@ -1628,14 +1628,14 @@
                 window.history.replaceState(null, '', window.location.pathname);
             }
             
-            // Automatically prompt for Google Sync if token is not present
-            if (!currentUserProfile.google_refresh_token) {
+            // Automatically prompt for Google Sync if tokens are missing
+            if (!currentUserProfile.google_refresh_token && !currentUserProfile.google_access_token) {
                 const gModal = document.getElementById('google-sync-modal');
                 if (gModal) {
                     gModal.classList.remove('hidden');
                     gModal.classList.add('flex');
                 }
-            } else if (!currentUserProfile.timezone) {
+            } else if (!currentUserProfile.timezone || currentUserProfile.timezone === 'UTC') {
                 const tzPrompt = document.getElementById('timezone-prompt-modal');
                 if (tzPrompt) {
                     tzPrompt.classList.remove('hidden');
@@ -1696,7 +1696,7 @@
                             gModal.classList.remove('hidden');
                             gModal.classList.add('flex');
                         }
-                    } else if (!myProfile.timezone) {
+                    } else if (!myProfile.timezone || myProfile.timezone === 'UTC') {
                         const tzPrompt = document.getElementById('timezone-prompt-modal');
                         if (tzPrompt) {
                             tzPrompt.classList.remove('hidden');
@@ -1868,12 +1868,13 @@
 
                 const { data: profileData } = await supabaseClient
                     .from('profiles')
-                    .select('full_name, role, timezone, account_level, google_refresh_token')
+                    .select('full_name, role, timezone, account_level, google_refresh_token, google_access_token')
                     .eq('id', session.user.id)
                     .maybeSingle();
+
                 // Fallback to email name if the profile row is missing or blocked by RLS
                 currentUserProfile = profileData ||
-                { full_name: session.user.email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null };
+                { full_name: session.user.email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null, google_access_token: null };
                 currentUserProfile.email = session.user.email;
                 
                 // RBAC SECURITY: Check if user has been inactivated or removed
