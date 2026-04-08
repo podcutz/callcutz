@@ -1732,6 +1732,18 @@
         function setupRealtimeSubscriptions() {
             const handleDbChange = (payload) => {
                 console.log("Realtime Database Change Detected:", payload);
+                
+                // INSTANT SECURITY CHECK: Force logout if user is deleted or deactivated
+                if (payload.table === 'access_control' && currentUserProfile?.email) {
+                    const affectedEmail = payload.new?.email || payload.old?.email;
+                    if (affectedEmail && affectedEmail.toLowerCase() === currentUserProfile.email.toLowerCase()) {
+                        if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new?.status !== 'Active')) {
+                            supabaseClient.auth.signOut().then(() => window.location.reload());
+                            return; // Stop execution
+                        }
+                    }
+                }
+
                 clearTimeout(realtimeTimeout);
                 // Wait 500ms to allow parent and child rows to fully insert before pulling data
                 realtimeTimeout = setTimeout(async () => {
@@ -1815,6 +1827,7 @@
             .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_participants' }, handleDbChange)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'availability' }, handleDbChange)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleDbChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'access_control' }, handleDbChange)
             .subscribe((status, err) => {
                 console.log("Realtime Connection Status:", status);
                 if (err) console.error("Realtime Error:", err);
