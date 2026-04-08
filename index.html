@@ -3917,16 +3917,15 @@ function renderDashboard() {
                 const { data: sessionData } = await supabaseClient.auth.getSession();
                 const currentUid = sessionData?.session?.user?.id || null;
 
-                // 3. Insert the new email (with role & default name)
-                const { error } = await supabaseClient.from('access_control').insert([{ email: email, status: 'Active', added_by: currentUid, role: role, name: 'New Teammate' }]);
+                // 3. Insert securely via backend RPC to bypass frontend RLS hurdles
+                const { error } = await supabaseClient.rpc('grant_operator_access', {
+                    new_email: email,
+                    new_role: role,
+                    operator_id: currentUid
+                });
                 
                 if (error) {
-                    // Show the exact Supabase backend error if it fails
-                    if (error.message.includes('row-level security')) {
-                        err.innerText = "RLS Error: Please ensure you ran the SQL fix for WITH CHECK inserts.";
-                    } else {
-                        err.innerText = error.message || "Failed to grant access.";
-                    }
+                    err.innerText = error.message || "Failed to grant access.";
                     err.classList.remove('hidden');
                 } else {
                     emailInput.value = '';
