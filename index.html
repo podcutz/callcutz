@@ -3870,8 +3870,9 @@ function renderDashboard() {
                             <span class="text-sm font-bold text-white capitalize tracking-wide">${displayName}</span>
                             <span class="text-[9px] text-white/60 lowercase tracking-widest mt-0.5">${user.email || ''}</span>
                         </div>
-                        <div class="w-[30%] flex justify-center">
-                            ${user.role ? `<span class="text-[10px] text-white/40 uppercase tracking-widest text-center">${user.role}</span>` : ''}
+                        <div class="w-[30%] flex justify-center relative items-center">
+                            <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer hover:text-white px-3 py-1 rounded-full border border-transparent transition-all">${user.role || 'SET ROLE'}</span>
+                            <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute bg-white text-black text-[10px] uppercase font-bold tracking-widest text-center rounded-full px-3 py-1.5 w-24 focus:outline-none shadow-[0_0_10px_rgba(255,255,255,0.3)] z-10" value="${user.role || ''}">
                         </div>
                         <div class="w-[30%] flex items-center justify-end gap-3">
                             <div class="relative">
@@ -3979,6 +3980,50 @@ function renderDashboard() {
                 fetchAccessList();
             } catch (err) {
                 console.error("Update failed:", err);
+            }
+        }
+
+        function openRoleEdit(email, currentRole, event) {
+            if (event) event.stopPropagation();
+            if (!email || email === 'null' || email === 'undefined') return;
+            
+            const safeEmailId = email.replace(/[@.]/g, '-');
+            const displaySpan = document.getElementById(`role-display-${safeEmailId}`);
+            const inputField = document.getElementById(`role-input-${safeEmailId}`);
+            
+            if (displaySpan && inputField) {
+                displaySpan.classList.add('hidden');
+                inputField.classList.remove('hidden');
+                inputField.value = currentRole && currentRole !== 'undefined' ? currentRole : '';
+                inputField.focus();
+                inputField.select(); // Instantly highlights the text so you can just start typing over it
+            }
+        }
+
+        async function saveUserRole(email, newRole, event) {
+            if (!email || email === 'null' || email === 'undefined') return;
+            
+            const safeEmailId = email.replace(/[@.]/g, '-');
+            const displaySpan = document.getElementById(`role-display-${safeEmailId}`);
+            const inputField = document.getElementById(`role-input-${safeEmailId}`);
+            
+            const roleVal = newRole.trim();
+            
+            if (displaySpan && inputField) {
+                // Instantly update UI for immediate buttery-smooth feedback
+                inputField.classList.add('hidden');
+                displaySpan.classList.remove('hidden');
+                displaySpan.innerText = roleVal || 'SET ROLE';
+            }
+            
+            try {
+                // Execute Secure RPC to securely update both tables (access_control & profiles)
+                await supabaseClient.rpc('update_user_role', {
+                    target_email: email,
+                    new_role: roleVal
+                });
+            } catch (err) {
+                console.error("Role update failed:", err);
             }
         }
         
