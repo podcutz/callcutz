@@ -1849,8 +1849,37 @@
              }, 500);
             };
 
-            supabaseClient.channel('db-changes')
+            supabaseClient.channel('db-changes', { config: { broadcast: { ack: true } } })
             .on('postgres_changes', { event: '*', schema: 'public' }, handleDbChange)
+            .on('broadcast', { event: 'force-logout' }, (payload) => {
+                // INSTANT BROADCAST LOGOUT: Bypasses Postgres Replica Identity limits completely
+                if (currentUserProfile?.email && payload.payload?.email && payload.payload.email.toLowerCase() === currentUserProfile.email.toLowerCase()) {
+                    supabaseClient.auth.signOut().then(() => {
+                        authUserId = null;
+                        currentUserProfile = null;
+                        
+                        document.getElementById('sidebar').classList.add('hidden');
+                        document.getElementById('sidebar').classList.remove('md:flex');
+                        document.getElementById('mainContent').classList.add('hidden');
+                        
+                        document.querySelectorAll('.fixed').forEach(modal => {
+                            if(modal.id !== 'page-login' && !modal.id.includes('toast')) {
+                                modal.classList.add('hidden');
+                                modal.classList.remove('flex');
+                            }
+                        });
+
+                        toggleAuthView('login');
+                        const loginPage = document.getElementById('page-login');
+                        loginPage.classList.remove('hidden');
+                        loginPage.classList.add('flex');
+                        
+                        const loginErr = document.getElementById('login-error');
+                        loginErr.innerText = "Access Revoked by Administrator.";
+                        loginErr.classList.remove('hidden');
+                    });
+                }
+            })
             .subscribe((status, err) => {
                 console.log("Realtime Connection Status:", status);
                 if (err) console.error("Realtime Error:", err);
@@ -4024,6 +4053,16 @@ roleInput.value = '';
             try {
                 // Use ILIKE for case-insensitive matching to guarantee the database row is found and updated
                 await supabaseClient.from('access_control').update({ status: newStatus }).ilike('email', email);
+                
+                // INSTANT LOGOUT VIA BROADCAST
+                if (newStatus === 'Inactive') {
+                    supabaseClient.channel('db-changes').send({
+                        type: 'broadcast',
+                        event: 'force-logout',
+                        payload: { email: email }
+                    });
+                }
+                
                 fetchAccessList();
             } catch (err) {
                 console.error("Update failed:", err);
@@ -4101,6 +4140,13 @@ function showUserDeleteConfirm(email) {
             // Optimistic UI Update
             const container = document.getElementById('access-list-container');
             container.innerHTML = '<div class="text-white/40 text-xs text-center py-4">Deleting...</div>';
+
+            // INSTANT LOGOUT VIA BROADCAST
+            supabaseClient.channel('db-changes').send({
+                type: 'broadcast',
+                event: 'force-logout',
+                payload: { email: email }
+            });
 
             // Fetch their actual UUID if they have an account
             const { data: profData } = await supabaseClient.from('profiles').select('id').eq('email', email).maybeSingle();
