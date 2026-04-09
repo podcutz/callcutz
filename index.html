@@ -1738,7 +1738,34 @@
                     const affectedEmail = payload.new?.email || payload.old?.email;
                     if (affectedEmail && affectedEmail.toLowerCase() === currentUserProfile.email.toLowerCase()) {
                         if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new?.status !== 'Active')) {
-                            supabaseClient.auth.signOut().then(() => window.location.reload());
+                            supabaseClient.auth.signOut().then(() => {
+                                // Wipe session memory instantly
+                                authUserId = null;
+                                currentUserProfile = null;
+                                
+                                // Smooth SPA transition to login screen without refreshing the browser
+                                document.getElementById('sidebar').classList.add('hidden');
+                                document.getElementById('sidebar').classList.remove('md:flex');
+                                document.getElementById('mainContent').classList.add('hidden');
+                                
+                                // Close all potential modals securely
+                                document.querySelectorAll('.fixed').forEach(modal => {
+                                    if(modal.id !== 'page-login' && !modal.id.includes('toast')) {
+                                        modal.classList.add('hidden');
+                                        modal.classList.remove('flex');
+                                    }
+                                });
+
+                                // Reveal login screen with error
+                                toggleAuthView('login');
+                                const loginPage = document.getElementById('page-login');
+                                loginPage.classList.remove('hidden');
+                                loginPage.classList.add('flex');
+                                
+                                const loginErr = document.getElementById('login-error');
+                                loginErr.innerText = "Access Revoked by Administrator.";
+                                loginErr.classList.remove('hidden');
+                            });
                             return; // Stop execution
                         }
                     }
