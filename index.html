@@ -4010,22 +4010,11 @@ async function deleteMeeting(id, skipWebhook = false) {
                 });
                 
                 if (error) {
-                    err.innerText = error.message ||
-"Failed to grant access.";
+                    err.innerText = error.message || "Failed to grant access.";
                     err.classList.remove('hidden');
                 } else {
-                    // Send Webhook silently in the background
-                    fetch('https://n8n.norkx.space/webhook/appinvitatiotoyou', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: email,
-                            role: role
-                        })
-                    }).catch(err => console.error("Webhook trigger failed:", err));
-
                     emailInput.value = '';
-roleInput.value = '';
+                    roleInput.value = '';
                     fetchAccessList();
                 }
             } catch (e) {
