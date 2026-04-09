@@ -1587,6 +1587,12 @@
             const loginPage = document.getElementById('page-login');
             loginPage.classList.add('hidden');
             loginPage.classList.remove('flex');
+            
+            // UI RECOVERY FIX: Restore the app shell in case it was hidden by a previous ghost-logout
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('sidebar').classList.add('md:flex');
+            document.getElementById('mainContent').classList.remove('hidden');
+            
             currentUserTimezone = currentUserProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
             populateTimezones();
             
@@ -2938,12 +2944,12 @@ function renderDashboard() {
                 const isPast = meetEnd < now;
                 const isLive = now >= meetStart && now <= meetEnd;
                 const amIHost = m.host_id === authUserId;
-                const myParticipantRecord = m.meeting_participants.find(p => p.user_id === authUserId);
-                
-                const hostParticipant = m.meeting_participants.find(p => p.user_id === m.host_id);
-                const hostName = hostParticipant?.profiles?.full_name || 'Unknown';
-
-                const hasPendingParticipants = m.meeting_participants.some(p => p.response_status === 'pending');
+            const myParticipantRecord = m.meeting_participants.find(p => p.user_id === authUserId);
+            
+            const hostParticipant = m.meeting_participants.find(p => p.user_id === m.host_id);
+            const hostName = amIHost ? 'You' : (hostParticipant?.profiles?.full_name || 'Unknown');
+            
+            const hasPendingParticipants = m.meeting_participants.some(p => p.response_status === 'pending');
                 const guestParticipants = m.meeting_participants.filter(p => p.user_id !== m.host_id);
                 const allDeclined = guestParticipants.length > 0 && guestParticipants.every(p => p.response_status === 'declined');
                 
