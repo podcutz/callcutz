@@ -3361,20 +3361,19 @@ async function deleteMeeting(id, skipWebhook = false) {
                 }
 
                 // Optimistic UI Update: Instantly remove from view
-            dbMeetings = dbMeetings.filter(m => m.id !== id);
-            renderDashboard();
+        dbMeetings = dbMeetings.filter(m => m.id !== id);
+        renderDashboard();
 
-            try {
-                await supabaseClient.from('meetings').delete().eq('id', id);
-                await fetchCoreData(false);
-                renderDashboard();
-            } catch(e) { 
-                console.error(e);
-                // Revert on failure
-                await fetchCoreData(false);
-                renderDashboard(); 
-            }
-        }
+        await supabaseClient.from('meetings').delete().eq('id', id);
+        await fetchCoreData(false);
+        renderDashboard();
+    } catch(e) { 
+        console.error(e);
+        // Revert on failure
+        await fetchCoreData(false);
+        renderDashboard(); 
+    }
+}
 
         function updateCountdowns() {
             const now = new Date();
