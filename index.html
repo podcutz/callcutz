@@ -2978,7 +2978,7 @@ function renderDashboard() {
 
  return `
                 <div class="relative p-4 bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex items-center justify-between">
-                    ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}')" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
+                    ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
                     <div class="flex items-center space-x-4 w-[35%]">
       
                   <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
@@ -3312,7 +3312,7 @@ function renderDashboard() {
             toggleEditMode(false);
         }
 
-        async function deleteMeeting(id) {
+async function deleteMeeting(id, skipWebhook = false) {
             try {
                 // Extract meeting details from local state before deletion
                 const meetingToDelete = dbMeetings.find(m => m.id === id);
@@ -3326,7 +3326,7 @@ function renderDashboard() {
                     .select('user_id')
                     .eq('meeting_id', id)
                     .eq('response_status', 'accepted');
-
+                
                 let participantsData = [];
                 if (acceptedParts && acceptedParts.length > 0) {
                     const userIds = acceptedParts.map(p => p.user_id);
@@ -3334,7 +3334,6 @@ function renderDashboard() {
                         .from('profiles')
                         .select('id, email, full_name')
                         .in('id', userIds);
-                    
                     if (profilesData) {
                         participantsData = profilesData.map(p => ({
                             user_id: p.id,
@@ -3345,25 +3344,23 @@ function renderDashboard() {
                 }
 
                 // 2. Send Webhook silently in the background
-                fetch('https://n8n.norkx.space/webhook/calldeletors', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        meeting_id: id,
-                        meeting_title: meetingTitle,
-                        start_time_utc: meetingStart,
-                        end_time_utc: meetingEnd,
-                        host_id: authUserId,
-                        host_name: currentUserProfile.full_name,
-                        participants: participantsData
-                    })
-                }).catch(err => console.error("Webhook trigger failed:", err));
-                
-            } catch(webhookErr) {
-                console.error("Failed to fetch participants or send webhook prior to deletion:", webhookErr);
-            }
+                if (!skipWebhook) {
+                    fetch('https://n8n.norkx.space/webhook/calldeletors', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            meeting_id: id,
+                            meeting_title: meetingTitle,
+                            start_time_utc: meetingStart,
+                            end_time_utc: meetingEnd,
+                            host_id: authUserId,
+                            host_name: currentUserProfile.full_name,
+                            participants: participantsData
+                        })
+                    }).catch(webhookErr => console.error("Webhook failed", webhookErr));
+                }
 
-            // Optimistic UI Update: Instantly remove from view
+                // Optimistic UI Update: Instantly remove from view
             dbMeetings = dbMeetings.filter(m => m.id !== id);
             renderDashboard();
 
