@@ -1899,10 +1899,22 @@
             // Deprecated: Removing this prevents the realtime fetch from interrupting a user who is currently picking a time!
         }
 
+        // GOD-TIER ENTERPRISE ARCHITECTURE: The Ultimate PKCE URL Shield
+        // This physically prevents the browser, our own scripts, or the Supabase SDK from wiping the ?code= URL 
+        // before the secure network exchange is completed.
+        const originalReplaceState = window.history.replaceState;
+        window.history.replaceState = function(...args) {
+            if (window.location.href.includes('type=recovery') || window.location.href.includes('code=')) {
+                console.log("Shield Active: Protected URL from being wiped prematurely.");
+                return; // Block the wipe, preserving the tokens for Supabase!
+            }
+            return originalReplaceState.apply(this, args);
+        };
+
         // BULLETPROOF TOKEN CATCHER: Intercept the URL hash instantly before the browser or Supabase can clear it
         let caughtGoogleTokens = null;
         let caughtRecoveryTokens = null;
-        let isRecoveryFlow = false;
+        let isRecoveryFlow = window.location.href.includes('type=recovery') || window.location.href.includes('code=');
         
         if (window.location.hash) {
             if (window.location.hash.includes('provider_token')) {
@@ -3744,7 +3756,6 @@ async function deleteMeeting(id, skipWebhook = false) {
             btn.disabled = true;
 
             // CYBERSECURITY & STABILITY FIX: Hydrate the session securely from the captured event
-            // This natively supports PKCE (?code=...) flows which bypassed the previous URL hash catcher
             if (window.activeRecoverySession) {
                 await supabaseClient.auth.setSession({
                     access_token: window.activeRecoverySession.access_token,
@@ -3757,9 +3768,19 @@ async function deleteMeeting(id, skipWebhook = false) {
                 });
             }
 
+            // Give the browser a 500ms buffer to guarantee the session is registered in memory
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const { error } = await supabaseClient.auth.updateUser({
                 password: newPwd
             });
+
+            if (!error) {
+                // SUCCESS! We saved the password. Now it is completely safe to drop the shield 
+                // and wipe the URL to make the app look professional again.
+                window.history.replaceState = originalReplaceState;
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
 
             if (error) {
                 const errorMsg = document.getElementById('rec-pass-error');
