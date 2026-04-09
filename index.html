@@ -3234,39 +3234,11 @@ function renderDashboard() {
                 renderDashboard();
                 if (!document.getElementById('page-teamview').classList.contains('hidden')) renderTeamGrid();
 
-                // Only hit DB and Webhook if values actually changed
-                if (hasChanged) {
-                    // 1. Fresh DB Query: Get accepted participants
-                    const { data: acceptedParts } = await supabaseClient
-                        .from('meeting_participants')
-                        .select('user_id')
-                        .eq('meeting_id', mId)
-                        .eq('response_status', 'accepted')
-                        .neq('user_id', authUserId);
-
-                    let participantIds = [];
-                    if (acceptedParts && acceptedParts.length > 0) {
-                        participantIds = acceptedParts.map(p => p.user_id);
-                    }
-
-                    // 2. Send Webhook silently in the background
-                    fetch('https://n8n.norkx.space/webhook/calleditez', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            meeting_id: mId,
-                            host_id: authUserId,
-                            accepted_participants: participantIds,
-                            new_title: newTitle,
-                            new_notes: newNotes,
-                            start_time_utc: startUTC,
-                            end_time_utc: endUTC
-                        })
-                    }).catch(err => console.error("Webhook trigger failed:", err));
-
-                    // 3. Send to Database
-                    await supabaseClient.from('meetings').update({ title: newTitle, description: newNotes }).eq('id', mId);
-                }
+                // Only hit DB if values actually changed
+        if (hasChanged) {
+            // Send to Database (Backend trigger automatically handles the n8n webhook)
+            await supabaseClient.from('meetings').update({ title: newTitle, description: newNotes }).eq('id', mId);
+        }
             } catch (e) {
                 console.error("Failed to save meeting edit", e);
             }
