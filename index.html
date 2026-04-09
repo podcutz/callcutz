@@ -3648,11 +3648,10 @@ async function deleteMeeting(id, skipWebhook = false) {
             btn.disabled = true;
 
             try {
-                // Call n8n Webhook
-                await fetch('https://n8n.norkx.space/webhook/forgottenone', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: emailInput, Problem: problemSource })
+                // Call Supabase RPC to securely trigger the webhook
+                await supabaseClient.rpc('trigger_forgot_password_webhook', {
+                    user_email: emailInput,
+                    problem_source: problemSource
                 });
 
                 // Show Success
