@@ -4220,19 +4220,20 @@ function showUserDeleteConfirm(email) {
                 }
             }
             
-            // Pass the explicitly verified database Profile ID directly as a pure string.
-            const state = encodeURIComponent(exactProfileId);
+            // ENTERPRISE ARCHITECTURE: URLSearchParams safely encodes all parameters and prevents URI injection attacks.
+            // NOTE: We intentionally DO NOT migrate the redirect_uri to Supabase. OAuth 2.0 requires a public browser 
+            // redirect, and keeping this in the frontend is the strict industry standard.
+            const authParams = new URLSearchParams({
+                client_id: GOOGLE_CLIENT_ID,
+                redirect_uri: N8N_WEBHOOK_URL,
+                response_type: 'code',
+                scope: 'https://www.googleapis.com/auth/calendar.events',
+                access_type: 'offline',
+                prompt: 'consent',
+                state: exactProfileId // URLSearchParams automatically handles the encoding
+            });
             
-            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
-                `client_id=${GOOGLE_CLIENT_ID}` +
-                `&redirect_uri=${encodeURIComponent(N8N_WEBHOOK_URL)}` +
-                `&response_type=code` +
-                `&scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar.events')}` +
-                `&access_type=offline` +
-                `&prompt=consent` +
-                `&state=${state}`;
-                
-            window.location.href = authUrl;
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${authParams.toString()}`;
         }
         
         function closeGoogleSyncModal() {
