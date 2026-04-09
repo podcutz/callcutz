@@ -1962,15 +1962,26 @@
                 { full_name: session.user.email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null, google_access_token: null };
                 currentUserProfile.email = session.user.email;
                 
-                // RBAC SECURITY: Check if user has been inactivated or removed
-                const { data: accessData } = await supabaseClient.from('access_control').select('status').eq('email', session.user.email).maybeSingle();
-                if (!accessData || accessData.status !== 'Active') {
-                    await supabaseClient.auth.signOut();
-                    const loginErr = document.getElementById('login-error');
-                    loginErr.innerText = "Access Denied";
-                    loginErr.classList.remove('hidden');
-                    return;
-                }
+                // RBAC SECURITY: Check if user has been inactivated or removed securely via RPC
+            const { data: accessData } = await supabaseClient.rpc('check_access_status', { lookup_email: session.user.email });
+            
+            if (!accessData || accessData.length === 0 || accessData[0].status !== 'Active') {
+                await supabaseClient.auth.signOut();
+                
+                // Show login screen correctly
+                document.getElementById('sidebar').classList.add('hidden');
+                document.getElementById('sidebar').classList.remove('md:flex');
+                document.getElementById('mainContent').classList.add('hidden');
+                toggleAuthView('login');
+                const loginPage = document.getElementById('page-login');
+                loginPage.classList.remove('hidden');
+                loginPage.classList.add('flex');
+
+                const loginErr = document.getElementById('login-error');
+                loginErr.innerText = "Access Denied by Administrator.";
+                loginErr.classList.remove('hidden');
+                return;
+            }
 
                 // UNLOCK OPERATOR UI
                 if (currentUserProfile.account_level === 'Operator') {
@@ -3743,43 +3754,13 @@ async function deleteMeeting(id, skipWebhook = false) {
             btn.innerText = "SAVING...";
             btn.disabled = true;
 
-            // ENTERPRISE FIX: Bypass buggy JS client session states and hit the Supabase Auth API directly
-            // This guarantees the password updates successfully using the active token we captured from the email link.
-            let error = null;
-            try {
-                let tokenToUse = window.activeRecoverySession?.access_token;
-                
-                // Fallback to client session if the capture event missed it
-                if (!tokenToUse) {
-                    const { data } = await supabaseClient.auth.getSession();
-                    tokenToUse = data?.session?.access_token;
-                }
+            // With the ghost-logout bug fixed, we can safely use the native Supabase SDK!
+            const { error } = await supabaseClient.auth.updateUser({
+                password: newPwd
+            });
 
-                if (!tokenToUse) throw new Error("Security token missing. Please click the email link again.");
-
-                const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${tokenToUse}`,
-                        'apikey': SUPABASE_ANON_KEY
-                    },
-                    body: JSON.stringify({ password: newPwd })
-                });
-
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.msg || errData.message || "Failed to update password");
-                }
-                
-                // Clean up the URL properly now that we have safely bypassed the race conditions
-                if (typeof originalReplaceState !== 'undefined') {
-                    window.history.replaceState = originalReplaceState;
-                }
+            if (!error) {
                 window.history.replaceState(null, '', window.location.pathname);
-                
-            } catch (err) {
-                error = err;
             }
 
             if (error) {
