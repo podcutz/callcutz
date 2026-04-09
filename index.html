@@ -1899,21 +1899,9 @@
             // Deprecated: Removing this prevents the realtime fetch from interrupting a user who is currently picking a time!
         }
 
-        // GOD-TIER ENTERPRISE ARCHITECTURE: The Ultimate PKCE URL Shield
-        // This physically prevents the browser, our own scripts, or the Supabase SDK from wiping the ?code= URL 
-        // before the secure network exchange is completed.
+        // Cleaned up architecture
         const originalReplaceState = window.history.replaceState;
-        window.history.replaceState = function(...args) {
-            if (window.location.href.includes('type=recovery') || window.location.href.includes('code=')) {
-                console.log("Shield Active: Protected URL from being wiped prematurely.");
-                return; // Block the wipe, preserving the tokens for Supabase!
-            }
-            return originalReplaceState.apply(this, args);
-        };
-
-        // BULLETPROOF TOKEN CATCHER: Intercept the URL hash instantly before the browser or Supabase can clear it
         let caughtGoogleTokens = null;
-        let caughtRecoveryTokens = null;
         let isRecoveryFlow = window.location.href.includes('type=recovery') || window.location.href.includes('code=');
         
         if (window.location.hash) {
@@ -3755,31 +3743,43 @@ async function deleteMeeting(id, skipWebhook = false) {
             btn.innerText = "SAVING...";
             btn.disabled = true;
 
-            // CYBERSECURITY & STABILITY FIX: Hydrate the session securely from the captured event
-            if (window.activeRecoverySession) {
-                await supabaseClient.auth.setSession({
-                    access_token: window.activeRecoverySession.access_token,
-                    refresh_token: window.activeRecoverySession.refresh_token
+            // ENTERPRISE FIX: Bypass buggy JS client session states and hit the Supabase Auth API directly
+            // This guarantees the password updates successfully using the active token we captured from the email link.
+            let error = null;
+            try {
+                let tokenToUse = window.activeRecoverySession?.access_token;
+                
+                // Fallback to client session if the capture event missed it
+                if (!tokenToUse) {
+                    const { data } = await supabaseClient.auth.getSession();
+                    tokenToUse = data?.session?.access_token;
+                }
+
+                if (!tokenToUse) throw new Error("Security token missing. Please click the email link again.");
+
+                const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${tokenToUse}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    },
+                    body: JSON.stringify({ password: newPwd })
                 });
-            } else if (typeof caughtRecoveryTokens !== 'undefined' && caughtRecoveryTokens && caughtRecoveryTokens.access) {
-                await supabaseClient.auth.setSession({
-                    access_token: caughtRecoveryTokens.access,
-                    refresh_token: caughtRecoveryTokens.refresh
-                });
-            }
 
-            // Give the browser a 500ms buffer to guarantee the session is registered in memory
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const { error } = await supabaseClient.auth.updateUser({
-                password: newPwd
-            });
-
-            if (!error) {
-                // SUCCESS! We saved the password. Now it is completely safe to drop the shield 
-                // and wipe the URL to make the app look professional again.
-                window.history.replaceState = originalReplaceState;
-                window.history.replaceState({}, document.title, window.location.pathname);
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.msg || errData.message || "Failed to update password");
+                }
+                
+                // Clean up the URL properly now that we have safely bypassed the race conditions
+                if (typeof originalReplaceState !== 'undefined') {
+                    window.history.replaceState = originalReplaceState;
+                }
+                window.history.replaceState(null, '', window.location.pathname);
+                
+            } catch (err) {
+                error = err;
             }
 
             if (error) {
