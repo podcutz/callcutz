@@ -3272,52 +3272,6 @@ function renderDashboard() {
 
 async function deleteMeeting(id, skipWebhook = false) {
             try {
-                // Extract meeting details from local state before deletion
-                const meetingToDelete = dbMeetings.find(m => m.id === id);
-                const meetingTitle = meetingToDelete ? meetingToDelete.title : 'Deleted Meeting';
-                const meetingStart = meetingToDelete ? meetingToDelete.start_time_utc : null;
-                const meetingEnd = meetingToDelete ? meetingToDelete.end_time_utc : null;
-
-                // 1. Fresh DB Query: Get all accepted participants (including the host) before the database cascades deletes
-                const { data: acceptedParts } = await supabaseClient
-                    .from('meeting_participants')
-                    .select('user_id')
-                    .eq('meeting_id', id)
-                    .eq('response_status', 'accepted');
-                
-                let participantsData = [];
-                if (acceptedParts && acceptedParts.length > 0) {
-                    const userIds = acceptedParts.map(p => p.user_id);
-                    const { data: profilesData } = await supabaseClient
-                        .from('profiles')
-                        .select('id, email, full_name')
-                        .in('id', userIds);
-                    if (profilesData) {
-                        participantsData = profilesData.map(p => ({
-                            user_id: p.id,
-                            email: p.email,
-                            name: p.full_name
-                        }));
-                    }
-                }
-
-                // 2. Send Webhook silently in the background
-                if (!skipWebhook) {
-                    fetch('https://n8n.norkx.space/webhook/calldeletors', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            meeting_id: id,
-                            meeting_title: meetingTitle,
-                            start_time_utc: meetingStart,
-                            end_time_utc: meetingEnd,
-                            host_id: authUserId,
-                            host_name: currentUserProfile.full_name,
-                            participants: participantsData
-                        })
-                    }).catch(webhookErr => console.error("Webhook failed", webhookErr));
-                }
-
                 // Optimistic UI Update: Instantly remove from view
         dbMeetings = dbMeetings.filter(m => m.id !== id);
         renderDashboard();
