@@ -1849,7 +1849,8 @@
              }, 500);
             };
 
-            supabaseClient.channel('db-changes', { config: { broadcast: { ack: true } } })
+            window.globalDbChannel = supabaseClient.channel('db-changes', { config: { broadcast: { ack: true } } });
+            window.globalDbChannel
             .on('postgres_changes', { event: '*', schema: 'public' }, handleDbChange)
             .on('broadcast', { event: 'force-logout' }, (payload) => {
                 // INSTANT BROADCAST LOGOUT: Bypasses Postgres Replica Identity limits completely
@@ -4055,8 +4056,8 @@ roleInput.value = '';
                 await supabaseClient.from('access_control').update({ status: newStatus }).ilike('email', email);
                 
                 // INSTANT LOGOUT VIA BROADCAST
-                if (newStatus === 'Inactive') {
-                    supabaseClient.channel('db-changes').send({
+                if (newStatus === 'Inactive' && window.globalDbChannel) {
+                    window.globalDbChannel.send({
                         type: 'broadcast',
                         event: 'force-logout',
                         payload: { email: email }
@@ -4142,11 +4143,13 @@ function showUserDeleteConfirm(email) {
             container.innerHTML = '<div class="text-white/40 text-xs text-center py-4">Deleting...</div>';
 
             // INSTANT LOGOUT VIA BROADCAST
-            supabaseClient.channel('db-changes').send({
-                type: 'broadcast',
-                event: 'force-logout',
-                payload: { email: email }
-            });
+            if (window.globalDbChannel) {
+                window.globalDbChannel.send({
+                    type: 'broadcast',
+                    event: 'force-logout',
+                    payload: { email: email }
+                });
+            }
 
             // Fetch their actual UUID if they have an account
             const { data: profData } = await supabaseClient.from('profiles').select('id').eq('email', email).maybeSingle();
