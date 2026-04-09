@@ -1823,11 +1823,7 @@
             };
 
             supabaseClient.channel('db-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, handleDbChange)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_participants' }, handleDbChange)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'availability' }, handleDbChange)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleDbChange)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'access_control' }, handleDbChange)
+            .on('postgres_changes', { event: '*', schema: 'public' }, handleDbChange)
             .subscribe((status, err) => {
                 console.log("Realtime Connection Status:", status);
                 if (err) console.error("Realtime Error:", err);
