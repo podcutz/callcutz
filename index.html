@@ -4072,18 +4072,7 @@ function showUserDeleteConfirm(email) {
                 });
             }
 
-            // Fetch their actual UUID if they have an account
-            const { data: profData } = await supabaseClient.from('profiles').select('id').eq('email', email).maybeSingle();
-            const payload = profData && profData.id ? { user_id: profData.id, email: email } : { email: email };
-            
-            // 1. Send to n8n Webhook for hard deletion in Supabase Auth ONLY
-            await fetch('https://n8n.norkx.space/webhook/harddeleteuser', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).catch(e => console.error("Webhook failed", e));
-            
-            // 2. Remove their permission to log in
+            // Remove their permission to log in (Backend trigger instantly handles the n8n hard-delete webhook)
             await supabaseClient.from('access_control').delete().eq('email', email);
             
             // Note: We intentionally DO NOT delete from the 'profiles' table here
