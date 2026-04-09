@@ -1901,6 +1901,7 @@
 
         // BULLETPROOF TOKEN CATCHER: Intercept the URL hash instantly before the browser or Supabase can clear it
         let caughtGoogleTokens = null;
+        let caughtRecoveryTokens = null;
         let isRecoveryFlow = false;
         
         if (window.location.hash) {
@@ -1915,6 +1916,13 @@
             }
             if (window.location.hash.includes('type=recovery')) {
                 isRecoveryFlow = true;
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                if (hashParams.get('access_token')) {
+                    caughtRecoveryTokens = {
+                        access: hashParams.get('access_token'),
+                        refresh: hashParams.get('refresh_token')
+                    };
+                }
             }
         }
 
@@ -3732,11 +3740,20 @@ async function deleteMeeting(id, skipWebhook = false) {
         async function submitRecoveryPassword() {
             const newPwd = document.getElementById('rec-new-password').value;
             const btn = document.getElementById('save-recovery-btn');
-            
             btn.innerText = "SAVING...";
             btn.disabled = true;
 
-            const { error } = await supabaseClient.auth.updateUser({ password: newPwd });
+            // CYBERSECURITY & STABILITY FIX: Hydrate the session from the URL hash we caught on page load
+            if (caughtRecoveryTokens && caughtRecoveryTokens.access) {
+                await supabaseClient.auth.setSession({
+                    access_token: caughtRecoveryTokens.access,
+                    refresh_token: caughtRecoveryTokens.refresh
+                });
+            }
+
+            const { error } = await supabaseClient.auth.updateUser({
+                password: newPwd
+            });
 
             if (error) {
                 const errorMsg = document.getElementById('rec-pass-error');
