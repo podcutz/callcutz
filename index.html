@@ -3743,8 +3743,14 @@ async function deleteMeeting(id, skipWebhook = false) {
             btn.innerText = "SAVING...";
             btn.disabled = true;
 
-            // CYBERSECURITY & STABILITY FIX: Hydrate the session from the URL hash we caught on page load
-            if (caughtRecoveryTokens && caughtRecoveryTokens.access) {
+            // CYBERSECURITY & STABILITY FIX: Hydrate the session securely from the captured event
+            // This natively supports PKCE (?code=...) flows which bypassed the previous URL hash catcher
+            if (window.activeRecoverySession) {
+                await supabaseClient.auth.setSession({
+                    access_token: window.activeRecoverySession.access_token,
+                    refresh_token: window.activeRecoverySession.refresh_token
+                });
+            } else if (typeof caughtRecoveryTokens !== 'undefined' && caughtRecoveryTokens && caughtRecoveryTokens.access) {
                 await supabaseClient.auth.setSession({
                     access_token: caughtRecoveryTokens.access,
                     refresh_token: caughtRecoveryTokens.refresh
@@ -3793,8 +3799,12 @@ async function deleteMeeting(id, skipWebhook = false) {
 
         // Catch the Recovery Event from Supabase Magic Link
         if (supabaseClient) {
+            // If it was a password recovery email link, automatically open the modal
             supabaseClient.auth.onAuthStateChange((event, session) => {
                 if (event === 'PASSWORD_RECOVERY') {
+                    // FIX: Capture the newly exchanged PKCE session directly from the event payload
+                    if (session) window.activeRecoverySession = session;
+                    
                     const recModal = document.getElementById('recovery-modal');
                     recModal.classList.remove('hidden');
                     recModal.classList.add('flex');
