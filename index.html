@@ -1020,6 +1020,14 @@
 
         let activeSelectedSlot = null; // Holds the selected slot data
 
+        // CYBERSECURITY: HTML Escaper to prevent Cross-Site Scripting (XSS) attacks
+        function safeText(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+        }
+
         function showToast(message) {
             const toast = document.getElementById('toast-msg');
             toast.innerText = message;
@@ -1320,9 +1328,9 @@
                     return;
                 }
 
-                // 3. Check Access Control Vault (case-insensitive)
-                const { data: accessData } = await supabaseClient.from('access_control').select('status').ilike('email', email).maybeSingle();
-                if (!accessData || accessData.status !== 'Active') {
+                // 3. Check Access Control Vault securely via RPC (Prevents data scraping)
+                const { data: accessData } = await supabaseClient.rpc('check_access_status', { lookup_email: email });
+                if (!accessData || accessData.length === 0 || accessData[0].status !== 'Active') {
                     await supabaseClient.auth.signOut();
                     errorMsg.innerText = "Access Denied";
                     errorMsg.classList.remove('hidden');
@@ -1432,10 +1440,10 @@
                     return;
                 }
 
-                // 2. Check Access Control Vault (case-insensitive)
-                const { data, error } = await supabaseClient.from('access_control').select('status').ilike('email', email).maybeSingle();
+                // 2. Check Access Control Vault securely via RPC (Prevents data scraping)
+                const { data, error } = await supabaseClient.rpc('check_access_status', { lookup_email: email });
 
-                if (data && data.status === 'Active') {
+                if (data && data.length > 0 && data[0].status === 'Active') {
                     err.classList.add('hidden');
                     document.getElementById('signup-step-1').classList.add('hidden');
                     document.getElementById('signup-step-1').classList.remove('flex');
@@ -1516,9 +1524,9 @@
             err.classList.add('hidden');
 
             try {
-                // Fetch pre-assigned role
-                const { data: accessData } = await supabaseClient.from('access_control').select('role').ilike('email', email).maybeSingle();
-                const userRole = accessData?.role || 'Member';
+                // Fetch pre-assigned role securely via RPC
+                const { data: accessData } = await supabaseClient.rpc('check_access_status', { lookup_email: email });
+                const userRole = (accessData && accessData.length > 0) ? accessData[0].role : 'Member';
 
                 const { data, error } = await supabaseClient.auth.signUp({
                     email: email,
@@ -1599,8 +1607,8 @@
             renderDashboard(); 
             
             const teamViewNav = document.getElementById('nav-teamview');
-            const allowedEmails = ['ibneumarceo@gmail.com', 'nomanakram.pic@gmail.com', 'shahkar745@gmail.com'];
-            const isAllowedTeamView = currentUserProfile?.email && allowedEmails.includes(currentUserProfile.email.toLowerCase());
+            // DYNAMIC RBAC: Automatically allows any current or future 'Operator' to view the Team Calendar
+            const isAllowedTeamView = currentUserProfile?.account_level === 'Operator';
             
             if (teamViewNav) {
                 if (isAllowedTeamView) {
@@ -1714,8 +1722,8 @@
 
             const meets = meetsRes.data;
             if (meets) {
-                const allowedEmails = ['ibneumarceo@gmail.com', 'nomanakram.pic@gmail.com', 'shahkar745@gmail.com'];
-                const isAllowedTeamView = currentUserProfile?.email && allowedEmails.includes(currentUserProfile.email.toLowerCase());
+                // DYNAMIC RBAC: Automatically allows any current or future 'Operator' to view all meetings
+                const isAllowedTeamView = currentUserProfile?.account_level === 'Operator';
 
                 if (isAllowedTeamView) {
                     dbMeetings = meets;
@@ -2223,8 +2231,8 @@
                 card.className = "p-6 bg-white/[0.03] border border-white/10 rounded-xl hover:bg-white/[0.06] hover:border-white/30 cursor-pointer transition-all group text-center";
                 card.innerHTML = `
                     <div class="w-16 h-16 rounded-full bg-white text-black font-black text-lg flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform overflow-hidden bg-cover bg-center" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
-                    <h4 class="text-sm font-bold capitalize tracking-tight mb-1">${m.name}</h4>
-                    <p class="text-[9px] text-white/40 capitalize tracking-widest">${m.role}</p>
+                    <h4 class="text-sm font-bold capitalize tracking-tight mb-1">${safeText(m.name)}</h4>
+                    <p class="text-[9px] text-white/40 capitalize tracking-widest">${safeText(m.role)}</p>
                 `;
                 card.onclick = () => openBooking(m);
                 container.appendChild(card);
@@ -2798,7 +2806,7 @@
                 const callCardsHTML = dayCalls.map(c => {
                     return `<div class="bg-black border border-white/20 rounded-md p-1.5 mb-1 flex items-center gap-1.5 overflow-hidden w-full">
                                 <div class="w-1.5 h-1.5 rounded-full bg-white shrink-0"></div>
-                                 <span class="text-[9px] text-white whitespace-nowrap overflow-hidden text-ellipsis capitalize">${c.title || 'Meeting'}</span>
+                                 <span class="text-[9px] text-white whitespace-nowrap overflow-hidden text-ellipsis capitalize">${safeText(c.title) || 'Meeting'}</span>
                             </div>`;
                 }).join('');
 
@@ -2855,7 +2863,7 @@
                 const cardHTML = `
                     <div class="bg-black border border-white/20 rounded-xl p-3 mb-3">
                         <div class="flex flex-col items-start mb-0">
-                            <h4 class="text-sm font-semibold text-white capitalize tracking-tight">${c.title || 'Meeting'}</h4>
+                            <h4 class="text-sm font-semibold text-white capitalize tracking-tight">${safeText(c.title) || 'Meeting'}</h4>
                             <span class="text-[10px] font-medium text-white/60 capitalize tracking-wide mt-0.5">${timeStr}</span>
                         </div>
                         <div class="flex items-center justify-between mt-2.5">
@@ -2944,8 +2952,8 @@ function renderDashboard() {
                 const isWithin15Mins = diffMs <= 15 * 60 * 1000 && now <= meetEnd;
 
                 const itemObj = {
-                    id: m.id, title: m.title || 'Meeting', time: timeStr, date: localDateNum, month: localMonthAbbr,
-                    host: hostName,
+                    id: m.id, title: safeText(m.title) || 'Meeting', time: timeStr, date: localDateNum, month: localMonthAbbr,
+                    host: safeText(hostName),
                     hasPending: hasPendingParticipants,
                     myStatus: myParticipantRecord ? myParticipantRecord.response_status : null,
                     isHost: amIHost, startUTC: m.start_time_utc, isLive: isLive, under24h: under24h, allDeclined: allDeclined, type: m.type, isWithin15Mins: isWithin15Mins, fullRecord: m
@@ -3928,7 +3936,7 @@ function renderDashboard() {
                 
                 // Auto-sync name from profiles if available (Added strict null-checks to prevent JS crashing loop)
                 const matchedProfile = profilesData?.find(p => p.email && user.email && p.email.toLowerCase() === user.email.toLowerCase());
-                const displayName = matchedProfile ? matchedProfile.full_name : (user.name || 'New Teammate');
+                const displayName = safeText(matchedProfile ? matchedProfile.full_name : (user.name || 'New Teammate'));
                 
                 container.innerHTML += `
                     <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
