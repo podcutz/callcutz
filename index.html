@@ -2694,10 +2694,11 @@
                     throw meetErr;
                 }
 
+                
                 const participantInserts = [
-                    { meeting_id: meetData.id, user_id: authUserId, response_status: 'accepted' },
+                    { meeting_id: meetData.id, user_id: authUserId, response_status: 'accepted', type: 'standard' },
                     ...currentBookingParticipants.map(p => ({
-                        meeting_id: meetData.id, user_id: p.id, response_status: 'pending'
+                        meeting_id: meetData.id, user_id: p.id, response_status: 'pending', type: 'standard'
                     }))
                 ];
                 const { error: pErr } = await supabaseClient.from('meeting_participants').insert(participantInserts);
