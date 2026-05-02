@@ -1797,6 +1797,34 @@
                     }
                 }
 
+                // DYNAMIC ROLE REALTIME SYNC: Update operator control panel visibility instantly
+                if (payload.table === 'profiles' && payload.eventType === 'UPDATE' && currentUserProfile && payload.new?.id === authUserId) {
+                    if (payload.new.account_level !== currentUserProfile.account_level) {
+                        currentUserProfile.account_level = payload.new.account_level;
+                        const opBtn = document.getElementById('operator-panel-btn');
+                        const teamViewNav = document.getElementById('nav-teamview');
+                        
+                        if (currentUserProfile.account_level === 'Operator') {
+                            if(opBtn) { opBtn.classList.remove('hidden'); opBtn.classList.add('flex'); }
+                            if(teamViewNav) { teamViewNav.classList.remove('hidden'); teamViewNav.classList.add('flex'); }
+                        } else {
+                            if(opBtn) { opBtn.classList.add('hidden'); opBtn.classList.remove('flex'); }
+                            if(teamViewNav) { teamViewNav.classList.add('hidden'); teamViewNav.classList.remove('flex'); }
+                            
+                            // Security: Close control panel if they are currently looking at it
+                            const cpModal = document.getElementById('control-panel-modal');
+                            if (cpModal && !cpModal.classList.contains('hidden')) {
+                                closeControlPanel();
+                            }
+                            
+                            // Security: Boot them back to the dashboard if they are staring at the Team Calendar
+                            if(localStorage.getItem('schedulr_active_page') === 'teamview') {
+                                showPage('dashboard');
+                            }
+                        }
+                    }
+                }
+
                 clearTimeout(realtimeTimeout);
                 // Wait 500ms to allow parent and child rows to fully insert before pulling data
                 realtimeTimeout = setTimeout(async () => {
@@ -3935,7 +3963,7 @@ async function deleteMeeting(id, skipWebhook = false) {
             }
             
             // Fetch all profiles to auto-sync names for existing users
-            const { data: profilesData } = await supabaseClient.from('profiles').select('email, full_name');
+            const { data: profilesData } = await supabaseClient.from('profiles').select('email, full_name, account_level');
             container.innerHTML = '';
             data.forEach(user => {
                 const isActive = user.status === 'Active';
@@ -3944,26 +3972,40 @@ async function deleteMeeting(id, skipWebhook = false) {
                 // Auto-sync name from profiles if available (Added strict null-checks to prevent JS crashing loop)
                 const matchedProfile = profilesData?.find(p => p.email && user.email && p.email.toLowerCase() === user.email.toLowerCase());
                 const displayName = safeText(matchedProfile ? matchedProfile.full_name : (user.name || 'New Teammate'));
+                const accountLevel = matchedProfile?.account_level || 'Member';
+                const levelColor = accountLevel === 'Operator' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-zinc-400 bg-white/5 border-white/10';
                 
                 container.innerHTML += `
                     <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                        <div class="flex flex-col w-[40%]">
-                            <span class="text-sm font-bold text-white capitalize tracking-wide">${displayName}</span>
-                            <span class="text-[9px] text-white/60 lowercase tracking-widest mt-0.5">${user.email || ''}</span>
+                        <div class="flex flex-col w-[30%] pr-2">
+                            <span class="text-sm font-bold text-white capitalize tracking-wide truncate">${displayName}</span>
+                            <span class="text-[9px] text-white/60 lowercase tracking-widest mt-0.5 truncate">${user.email || ''}</span>
                         </div>
-                        <div class="w-[30%] flex justify-center relative items-center">
+                        <div class="w-[20%] flex justify-center relative items-center">
                             <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-md border border-transparent transition-all">${user.role || 'SET ROLE'}</span>
                             <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest text-center rounded-md border border-white px-3 py-1.5 w-24 focus:outline-none z-10" value="${user.role || ''}">
                         </div>
-                        <div class="w-[30%] flex items-center justify-end gap-3">
+                        <div class="w-[25%] flex justify-center relative items-center">
+                            <div class="relative">
+                                <button onclick="toggleLevelDropdown('${user.email}', event)" class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded border transition-colors flex items-center gap-1.5 ${levelColor}">
+                                    <span>${accountLevel}</span>
+                                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                </button>
+                                <div id="level-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full left-1/2 -translate-x-1/2 mt-1 w-28 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl z-[8000] overflow-hidden">
+                                    <div onclick="updateUserLevelDropdown('${user.email}', 'Member', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer text-center">Member</div>
+                                    <div onclick="updateUserLevelDropdown('${user.email}', 'Operator', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer text-center">Operator</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-[25%] flex items-center justify-end gap-3">
                             <div class="relative">
                                 <button onclick="toggleStatusDropdown('${user.email}', event)" class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded border transition-colors flex items-center gap-1.5 ${statusColor}">
                                     <span>${user.status}</span>
                                     <i data-lucide="chevron-down" class="w-3 h-3"></i>
                                 </button>
                                 <div id="status-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full right-0 mt-1 w-28 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl z-[8000] overflow-hidden">
-                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Active', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer">Active</div>
-                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Inactive', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer">Inactive</div>
+                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Active', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer text-center">Active</div>
+                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Inactive', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer text-center">Inactive</div>
                                 </div>
                             </div>
                             <button onclick="showUserDeleteConfirm('${user.email}')" class="p-1.5 text-red-400 hover:text-white hover:bg-red-500 rounded transition-colors" title="Delete User">
@@ -4074,6 +4116,37 @@ async function deleteMeeting(id, skipWebhook = false) {
             }
         }
 
+        function toggleLevelDropdown(email, event) {
+            event.stopPropagation();
+            const safeEmailId = email.replace(/[@.]/g, '-');
+            document.querySelectorAll('[id^="level-menu-"]').forEach(m => {
+                if (m.id !== `level-menu-${safeEmailId}`) m.classList.add('hidden');
+            });
+            const menu = document.getElementById(`level-menu-${safeEmailId}`);
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        async function updateUserLevelDropdown(email, newLevel, event) {
+            if (event) event.stopPropagation();
+            if (!email || email === 'null' || email === 'undefined') return;
+            
+            const safeEmailId = email.replace(/[@.]/g, '-');
+            const menu = document.getElementById(`level-menu-${safeEmailId}`);
+            if (menu) menu.classList.add('hidden');
+            
+            try {
+                // Execute Secure RPC to update the profiles table
+                await supabaseClient.rpc('update_account_level', {
+                    target_email: email,
+                    new_level: newLevel
+                });
+                
+                fetchAccessList();
+            } catch (err) {
+                console.error("Account level update failed:", err);
+            }
+        }
+
         function openRoleEdit(email, currentRole, event) {
             if (event) event.stopPropagation();
             if (!email || email === 'null' || email === 'undefined') return;
@@ -4120,6 +4193,7 @@ async function deleteMeeting(id, skipWebhook = false) {
         
         document.addEventListener('click', () => {
             document.querySelectorAll('[id^="status-menu-"]').forEach(m => m.classList.add('hidden'));
+            document.querySelectorAll('[id^="level-menu-"]').forEach(m => m.classList.add('hidden'));
         });
 
 function showUserDeleteConfirm(email) {
