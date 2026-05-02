@@ -1742,7 +1742,7 @@
             }
         }
 
-        let realtimeTimeout;
+        =let realtimeTimeout;
         function setupRealtimeSubscriptions() {
             const handleDbChange = (payload) => {
                 console.log("Realtime Database Change Detected:", payload);
@@ -1755,38 +1755,40 @@
                     if ((affectedEmail && affectedEmail.toLowerCase() === currentUserProfile.email.toLowerCase()) || !affectedEmail || payload.eventType === 'DELETE') {
                         
                         // Bulletproof fallback: Always double-check our status directly with the DB securely
-                        supabaseClient.rpc('check_access_status', { lookup_email: currentUserProfile.email }).then(({data}) => {
-                            if (!data || data.length === 0 || data[0].status !== 'Active') {
-                                supabaseClient.auth.signOut().then(() => {
-                                    // Wipe session memory instantly
-                                    authUserId = null;
-                                    currentUserProfile = null;
-                                    
-                                    // Smooth SPA transition to login screen without refreshing the browser
-                                    document.getElementById('sidebar').classList.add('hidden');
-                                    document.getElementById('sidebar').classList.remove('md:flex');
-                                    document.getElementById('mainContent').classList.add('hidden');
-                                    
-                                    // Close all potential modals securely
-                                    document.querySelectorAll('.fixed').forEach(modal => {
-                                        if(modal.id !== 'page-login' && !modal.id.includes('toast')) {
-                                            modal.classList.add('hidden');
-                                            modal.classList.remove('flex');
-                                        }
-                                    });
+                        supabaseClient.rpc('check_access_status', { lookup_email: currentUserProfile.email })
+                            .then(({data, error}) => {
+                                if (error || !data || data.length === 0 || data[0].status !== 'Active') {
+                                    supabaseClient.auth.signOut().then(() => {
+                                        // Wipe session memory instantly
+                                        authUserId = null;
+                                        currentUserProfile = null;
+                                        
+                                        // Smooth SPA transition to login screen without refreshing the browser
+                                        document.getElementById('sidebar').classList.add('hidden');
+                                        document.getElementById('sidebar').classList.remove('md:flex');
+                                        document.getElementById('mainContent').classList.add('hidden');
+                                        
+                                        // Close all potential modals securely
+                                        document.querySelectorAll('.fixed').forEach(modal => {
+                                            if(modal.id !== 'page-login' && !modal.id.includes('toast')) {
+                                                modal.classList.add('hidden');
+                                                modal.classList.remove('flex');
+                                            }
+                                        });
 
-                                    // Reveal login screen with error
-                                    toggleAuthView('login');
-                                    const loginPage = document.getElementById('page-login');
-                                    loginPage.classList.remove('hidden');
-                                    loginPage.classList.add('flex');
-                                    
-                                    const loginErr = document.getElementById('login-error');
-                                    loginErr.innerText = "Access Revoked by Administrator.";
-                                    loginErr.classList.remove('hidden');
-                                });
-                            }
-                        });
+                                        // Reveal login screen with error
+                                        toggleAuthView('login');
+                                        const loginPage = document.getElementById('page-login');
+                                        loginPage.classList.remove('hidden');
+                                        loginPage.classList.add('flex');
+                                        
+                                        const loginErr = document.getElementById('login-error');
+                                        loginErr.innerText = "Access Revoked by Administrator.";
+                                        loginErr.classList.remove('hidden');
+                                    });
+                                }
+                            })
+                            .catch(err => console.error("RPC Security Check Error:", err));
                         
                         // Stop execution immediately if we already know for a fact it was us
                         if (affectedEmail && affectedEmail.toLowerCase() === currentUserProfile.email.toLowerCase() && (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new?.status !== 'Active'))) {
@@ -4316,4 +4318,14 @@ function showUserDeleteConfirm(email) {
             
             window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${authParams.toString()}`;
         }
-       
+        
+        function closeGoogleSyncModal() {
+            const gModal = document.getElementById('google-sync-modal');
+            if (gModal) {
+                gModal.classList.add('hidden');
+                gModal.classList.remove('flex');
+            }
+        }
+    </script>
+</body>
+</html>
