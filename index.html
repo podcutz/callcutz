@@ -1735,7 +1735,7 @@
                     dbMeetings = meets;
                 } else {
                     dbMeetings = meets.filter(m => 
-                        m.host_id === authUserId || 
+                        m.host_id.includes(authUserId) || 
                         m.meeting_participants.some(p => p.user_id === authUserId)
                     );
                 }
@@ -1879,8 +1879,11 @@
                                     const avatar = isMe ? currentUserProfile.avatar : teamMembers.find(tm => tm.id === p.user_id)?.avatar;
                                     const init = (realNameForInit || 'U').charAt(0).toUpperCase();
                                     let statusText = '';
-                                    if (p.user_id === updatedMeeting.host_id) statusText = 'Host';
-                                    else if (p.response_status === 'pending') statusText = 'Pending Response';
+                                    if (updatedMeeting.host_id.includes(p.user_id)) {
+                                        statusText = p.response_status === 'pending' ? 'Host (Pending)' : 'Host';
+                                    } else if (p.response_status === 'pending') {
+                                        statusText = 'Pending Response';
+                                    }
                                     
                                     return `<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
                                         <div class="flex items-center space-x-3">
@@ -2722,7 +2725,7 @@
                 // The Database Trigger will automatically reject this insert if there is an overlap!
                 const { data: meetData, error: meetErr } = await supabaseClient
                     .from('meetings').insert([{
-                        host_id: authUserId, title: finalTitle, description: callNotes, start_time_utc: activeSelectedSlot.startUTC, end_time_utc: activeSelectedSlot.endUTC
+                        host_id: [authUserId], title: finalTitle, description: callNotes, start_time_utc: activeSelectedSlot.startUTC, end_time_utc: activeSelectedSlot.endUTC
                     }]).select().single();
                 
                 if (meetErr) {
@@ -2871,7 +2874,7 @@
                 if (selectedFilters.length > 0) {
                     dayCalls = dayCalls.filter(c => {
                         const participants = c.meeting_participants.map(p => p.user_id);
-                        if (!participants.includes(c.host_id)) participants.push(c.host_id);
+                        c.host_id.forEach(hId => { if (!participants.includes(hId)) participants.push(hId); });
                         return participants.some(pId => selectedFilters.includes(pId));
                     });
                 }
@@ -3030,41 +3033,52 @@ function renderDashboard() {
                 const meetEnd = new Date(m.end_time_utc);
                 const isPast = meetEnd < now;
                 const isLive = now >= meetStart && now <= meetEnd;
-                const amIHost = m.host_id === authUserId;
+                const amIHost = m.host_id.includes(authUserId);
             const myParticipantRecord = m.meeting_participants.find(p => p.user_id === authUserId);
             
-            const hostParticipant = m.meeting_participants.find(p => p.user_id === m.host_id);
-            const hostName = amIHost ? 'You' : (hostParticipant?.profiles?.full_name || 'Unknown');
-            
-            const hasPendingParticipants = m.meeting_participants.some(p => p.response_status === 'pending');
-                const guestParticipants = m.meeting_participants.filter(p => p.user_id !== m.host_id);
-                const allDeclined = guestParticipants.length > 0 && guestParticipants.every(p => p.response_status === 'declined');
-                
-                const timeStr = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart) + ' - ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetEnd);
-                
-                const localDateNum = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, day: 'numeric' }).format(meetStart));
-                const localMonthAbbr = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, month: 'short' }).format(meetStart);
-                
-                const diffMs = meetStart - now;
-                const under24h = diffMs > 0 && diffMs <= 24 * 60 * 60 * 1000;
-                const isWithin15Mins = diffMs <= 15 * 60 * 1000 && now <= meetEnd;
-
-                const itemObj = {
-                    id: m.id, title: safeText(m.title) || 'Meeting', time: timeStr, date: localDateNum, month: localMonthAbbr,
-                    host: safeText(hostName),
-                    hasPending: hasPendingParticipants,
-                    myStatus: myParticipantRecord ? myParticipantRecord.response_status : null,
-                    isHost: amIHost, startUTC: m.start_time_utc, isLive: isLive, under24h: under24h, allDeclined: allDeclined, type: m.type, isWithin15Mins: isWithin15Mins, fullRecord: m
-                };
-                
-                // Only show meetings in personal dashboard if I am the host or a participant
-                if (amIHost || myParticipantRecord) {
-                    if (isPast) { pasts.push(itemObj); } 
-                    else if (!amIHost && itemObj.myStatus === 'pending') { requests.push(itemObj);
-                    } 
-                    else if (amIHost || itemObj.myStatus === 'accepted') { upcomings.push(itemObj);
-                    }
+            let hostName = 'Unknown';
+            if (amIHost) {
+                const otherHosts = m.host_id.filter(id => id !== authUserId);
+                if (otherHosts.length > 0) {
+                    const otherHostId = otherHosts[0];
+                    const otherHostMember = teamMembers.find(tm => tm.id === otherHostId);
+                    const otherHostParticipant = m.meeting_participants.find(p => p.user_id === otherHostId);
+                    const otherHostFullName = otherHostMember?.name || otherHostParticipant?.profiles?.full_name || 'Unknown';
+                    hostName = `You & ${otherHostFullName.split(' ')[0]}`;
+                } else {
+                    hostName = 'You';
                 }
+            } else {
+                const hostMember = teamMembers.find(tm => m.host_id.includes(tm.id));
+                const hostParticipant = m.meeting_participants.find(p => m.host_id.includes(p.user_id));
+                hostName = hostMember?.name || hostParticipant?.profiles?.full_name || 'Unknown';
+            }
+            
+            const otherParticipants = m.meeting_participants.filter(p => p.user_id !== authUserId);
+            const hasPendingParticipants = otherParticipants.some(p => p.response_status === 'pending');
+            const anyDeclined = otherParticipants.some(p => p.response_status === 'declined');
+            const allDeclined = otherParticipants.length > 0 && otherParticipants.every(p => p.response_status === 'declined');
+            
+            const timeStr = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart) + ' - ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetEnd);
+            const localDateNum = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, day: 'numeric' }).format(meetStart));
+            const localMonthAbbr = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, month: 'short' }).format(meetStart);
+                
+            const diffMs = meetStart - now;
+            const under24h = diffMs > 0 && diffMs <= 24 * 60 * 60 * 1000;
+            const isWithin15Mins = diffMs <= 15 * 60 * 1000 && now <= meetEnd;
+            const itemObj = {
+                id: m.id, title: safeText(m.title) || 'Meeting', time: timeStr, date: localDateNum, month: localMonthAbbr,
+                host: safeText(hostName),
+                hasPending: hasPendingParticipants,
+                myStatus: myParticipantRecord ? myParticipantRecord.response_status : null,
+                isHost: amIHost, startUTC: m.start_time_utc, isLive: isLive, under24h: under24h, allDeclined: allDeclined, anyDeclined: anyDeclined, type: m.type, isWithin15Mins: isWithin15Mins, fullRecord: m
+            };
+            // Only show meetings in personal dashboard if I am the host or a participant
+            if (amIHost || myParticipantRecord) {
+                if (isPast) { pasts.push(itemObj); } 
+                else if (itemObj.myStatus === 'pending') { requests.push(itemObj); } 
+                else if (itemObj.myStatus === 'accepted' || (amIHost && itemObj.myStatus !== 'declined')) { upcomings.push(itemObj); }
+            }
             });
 
             // 1. Render Upcoming
@@ -3076,25 +3090,19 @@ function renderDashboard() {
 
  return `
                 <div class="relative p-4 bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex items-center justify-between">
-                    ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
+                    ${s.isHost && s.anyDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
                     <div class="flex items-center space-x-4 w-[35%]">
-      
-                  <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
+                        <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
                             <span class="text-[8px] uppercase leading-none mt-0.5">${s.month}</span>
                             <span class="text-sm leading-none">${s.date}</span>
                         </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-2 mb-0.5">
                                 <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${s.title}</h4>
-       
-                          ${s.isHost && s.allDeclined ?
-'<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Request Declined</span>' : ''}
-                                ${s.isLive && !s.allDeclined ?
-'<div class="flex items-center space-x-1.5 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
-                                ${s.type === 'lead' ?
-'<div class="flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
-                                ${s.isHost && s.hasPending && !s.allDeclined ?
-'<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold uppercase text-white/30 tracking-widest whitespace-nowrap">Pending Response</span></div>' : ''}
+                                ${s.anyDeclined ? '<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Declined</span>' : ''}
+                                ${s.isLive && !s.anyDeclined ? '<div class="flex items-center space-x-1.5 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
+                                ${s.type === 'lead' ? '<div class="flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
+                                ${s.hasPending && !s.anyDeclined ? '<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold uppercase text-white/30 tracking-widest whitespace-nowrap">Pending Response</span></div>' : ''}
                             </div>
                             <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${s.time}</p>
                             <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${s.host}</p>
@@ -3220,7 +3228,7 @@ function renderDashboard() {
             window.currentEditingMeetingId = m.id;
             const hostActions = document.getElementById('cd-host-actions');
             if (hostActions) {
-                if (m.host_id === authUserId && m.type !== 'lead') {
+                if (m.host_id.includes(authUserId) && m.type !== 'lead') {
                     hostActions.classList.remove('hidden');
                     hostActions.classList.add('flex');
                 } else {
@@ -3279,8 +3287,11 @@ function renderDashboard() {
                 const avatar = isMe ? currentUserProfile.avatar : teamMembers.find(tm => tm.id === p.user_id)?.avatar;
                 const init = (realNameForInit || 'U').charAt(0).toUpperCase();
                 let statusText = '';
-                if (p.user_id === m.host_id) statusText = 'Host';
-                else if (p.response_status === 'pending') statusText = 'Pending Response';
+                if (m.host_id.includes(p.user_id)) {
+                    statusText = p.response_status === 'pending' ? 'Host (Pending)' : 'Host';
+                } else if (p.response_status === 'pending') {
+                    statusText = 'Pending Response';
+                }
                 
                 return `<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
                     <div class="flex items-center space-x-3">
@@ -3325,7 +3336,7 @@ function renderDashboard() {
                 
                 if(window.currentEditingMeetingId) {
                     const m = dbMeetings.find(meeting => meeting.id === window.currentEditingMeetingId);
-                    if(m && m.host_id === authUserId && m.type !== 'lead') {
+                    if(m && m.host_id.includes(authUserId) && m.type !== 'lead') {
                         hostActions.classList.remove('hidden');
                         hostActions.classList.add('flex');
                     }
