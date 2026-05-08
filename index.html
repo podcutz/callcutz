@@ -3152,20 +3152,20 @@ function renderDashboard() {
 
  return `
                 <div class="relative p-4 bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex items-center justify-between">
-                    ${s.isHost && s.anyDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
-                    <div class="flex items-center space-x-4 w-[35%]">
-                        <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
-                            <span class="text-[8px] uppercase leading-none mt-0.5">${s.month}</span>
-                            <span class="text-sm leading-none">${s.date}</span>
-                        </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${s.title}</h4>
-                                ${s.anyDeclined ? '<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Declined</span>' : ''}
-                                ${s.isLive && !s.anyDeclined ? '<div class="flex items-center space-x-1.5 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
-                                ${s.type === 'lead' ? '<div class="flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
-                                ${s.hasPending && !s.anyDeclined ? '<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold uppercase text-white/30 tracking-widest whitespace-nowrap">Pending Response</span></div>' : ''}
+                        ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
+                        <div class="flex items-center space-x-4 w-[35%]">
+                            <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
+                                <span class="text-[8px] uppercase leading-none mt-0.5">${s.month}</span>
+                                <span class="text-sm leading-none">${s.date}</span>
                             </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${s.title}</h4>
+                                    ${s.allDeclined ? '<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Declined</span>' : ''}
+                                    ${s.isLive && !s.allDeclined ? '<div class="flex items-center space-x-1.5 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
+                                    ${s.type === 'lead' ? '<div class="flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
+                                    ${s.hasPending && !s.allDeclined ? '<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold uppercase text-white/30 tracking-widest whitespace-nowrap">Pending Response</span></div>' : ''}
+                                </div>
                             <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${s.time}</p>
                             <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${s.host}</p>
                         </div>
