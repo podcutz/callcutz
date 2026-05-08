@@ -2525,27 +2525,39 @@
 
                             // OPTIMIZATION: Run independent queries concurrently using Promise.all to drastically reduce load time
                             const [availRes, partRes, meets1Res] = await Promise.all([
-                                supabaseClient.from('availability').select('*').in('user_id', participantIds),
-                                supabaseClient.from('meeting_participants').select('meeting_id, response_status, user_id').in('user_id', participantIds),
-                                supabaseClient.from('meetings').select('id, start_time_utc, end_time_utc').in('host_id', participantIds).gte('start_time_utc', minUTC).lt('start_time_utc', maxUTC)
-                            ]);
+    supabaseClient.from('availability').select('*').in('user_id', participantIds),
+    supabaseClient.from('meeting_participants').select('meeting_id, response_status, user_id').in('user_id', participantIds),
+    supabaseClient.from('meetings').select('id, start_time_utc, end_time_utc, host_id, type').in('host_id', participantIds).gte('start_time_utc', minUTC).lt('start_time_utc', maxUTC)
+]);
 
                             const availData = availRes.data;
                             const partData = partRes.data;
                             const meets1 = meets1Res.data;
                             
-                            let validMeetingIds = [];
-                            if (partData) {
-                                validMeetingIds = partData
-                                    .filter(p => p.response_status === 'accepted') // Only block if accepted
-                                    .map(p => p.meeting_id);
-                            }
-                            
-                            if (meets1) {
-                                validMeetingIds.push(...meets1.map(m => m.id));
-                            }
-                            
-                            validMeetingIds = [...new Set(validMeetingIds)];
+                            let validMeetingIds = new Set();
+
+if (meets1) {
+    meets1.forEach(m => {
+        const blocksSomeone = participantIds.some(userId => {
+            if (m.host_id && m.host_id.includes(userId)) {
+                const userPart = partData && partData.find(p => p.meeting_id === m.id && p.user_id === userId);
+                if (!userPart) return false;
+                
+                if (m.type === 'lead') {
+                    return userPart.response_status !== 'declined';
+                } else {
+                    return userPart.response_status === 'accepted';
+                }
+            }
+            return false;
+        });
+        if (blocksSomeone) {
+            validMeetingIds.add(m.id);
+        }
+    });
+}
+
+validMeetingIds = [...validMeetingIds];
                             let allMeetings = [];
                             if (validMeetingIds.length > 0) {
                                 const { data: mData } = await supabaseClient
@@ -2700,19 +2712,40 @@
                 // Last-minute surety check: verify availability rules and overlapping meetings haven't changed in the last few seconds
                 const participantIds = [authUserId, ...currentBookingParticipants.map(p => p.id)];
                 
-                const [availCheck, conflictCheck] = await Promise.all([
-                    supabaseClient.from('availability').select('user_id').in('user_id', participantIds),
-                    supabaseClient.from('meetings').select('id')
-                        .in('host_id', participantIds)
-                        .lt('start_time_utc', activeSelectedSlot.endUTC)
-                        .gt('end_time_utc', activeSelectedSlot.startUTC)
-                ]);
+                const [availCheck, conflictCheck, partCheck] = await Promise.all([
+    supabaseClient.from('availability').select('user_id').in('user_id', participantIds),
+    supabaseClient.from('meetings').select('id, host_id, type')
+        .in('host_id', participantIds)
+        .lt('start_time_utc', activeSelectedSlot.endUTC)
+        .gt('end_time_utc', activeSelectedSlot.startUTC),
+    supabaseClient.from('meeting_participants').select('meeting_id, response_status, user_id').in('user_id', participantIds)
+]);
 
-                if (conflictCheck.data && conflictCheck.data.length > 0) {
-                    showToast("Time slot is no longer available. Please select another.");
-                    document.querySelector('.booking-day.selected').click();
-                    throw new Error('Overlap');
+let hasRealConflict = false;
+if (conflictCheck.data && conflictCheck.data.length > 0) {
+    const activeConflicts = conflictCheck.data.filter(m => {
+        return participantIds.some(userId => {
+            if (m.host_id && m.host_id.includes(userId)) {
+                const userPartRecord = partCheck.data?.find(p => p.meeting_id === m.id && p.user_id === userId);
+                if (!userPartRecord) return false;
+                
+                if (m.type === 'lead') {
+                    return userPartRecord.response_status !== 'declined';
+                } else {
+                    return userPartRecord.response_status === 'accepted';
                 }
+            }
+            return false;
+        });
+    });
+    if (activeConflicts.length > 0) hasRealConflict = true;
+}
+
+if (hasRealConflict) {
+    showToast("Time slot is no longer available. Please select another.");
+    document.querySelector('.booking-day.selected').click();
+    throw new Error('Overlap');
+}
                 
                 const usersWithAvail = new Set((availCheck.data || []).map(a => a.user_id));
                 const allHaveAvail = participantIds.every(id => usersWithAvail.has(id));
@@ -4380,37 +4413,4 @@ function showUserDeleteConfirm(email) {
             let exactProfileId = authUserId; // Default fallback
             
             // FOOLPROOF FETCH: Directly ask the profiles table for the EXACT ID currently stored in it
-            // This guarantees 100% precision for the n8n webhook update.
-            if (currentUserProfile && currentUserProfile.email) {
-                const { data: dbProfile } = await supabaseClient.from('profiles').select('id').eq('email', currentUserProfile.email).maybeSingle();
-                if (dbProfile && dbProfile.id) {
-                    exactProfileId = dbProfile.id;
-                }
-            }
-            
-            // ENTERPRISE ARCHITECTURE: URLSearchParams safely encodes all parameters and prevents URI injection attacks.
-            // NOTE: We intentionally DO NOT migrate the redirect_uri to Supabase. OAuth 2.0 requires a public browser 
-            // redirect, and keeping this in the frontend is the strict industry standard.
-            const authParams = new URLSearchParams({
-                client_id: GOOGLE_CLIENT_ID,
-                redirect_uri: N8N_WEBHOOK_URL,
-                response_type: 'code',
-                scope: 'https://www.googleapis.com/auth/calendar.events',
-                access_type: 'offline',
-                prompt: 'consent',
-                state: exactProfileId // URLSearchParams automatically handles the encoding
-            });
-            
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${authParams.toString()}`;
-        }
-        
-        function closeGoogleSyncModal() {
-            const gModal = document.getElementById('google-sync-modal');
-            if (gModal) {
-                gModal.classList.add('hidden');
-                gModal.classList.remove('flex');
-            }
-        }
-    </script>
-</body>
-</html>
+       
