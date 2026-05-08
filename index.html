@@ -1846,7 +1846,7 @@
                             // Re-render participants inside the open modal
                             const list = document.getElementById('cd-participants-list');
                             if (list) {
-                                const validParticipants = updatedMeeting.meeting_participants.filter(p => p.response_status !== 'declined');
+                                const validParticipants = updatedMeeting.meeting_participants;
                                 validParticipants.sort((a, b) => {
                                     if (a.user_id === authUserId) return -1;
                                     if (b.user_id === authUserId) return 1;
@@ -1883,6 +1883,10 @@
                                         statusText = p.response_status === 'pending' ? 'Host (Pending)' : 'Host';
                                     } else if (p.response_status === 'pending') {
                                         statusText = 'Pending Response';
+                                    } else if (p.response_status === 'declined') {
+                                        statusText = 'Declined';
+                                    } else if (p.response_status === 'accepted') {
+                                        statusText = 'Accepted';
                                     }
                                     
                                     return `<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
@@ -2554,20 +2558,18 @@
                                         const isLead = m.type === 'lead';
                                         
                                         if (isHost) {
-                                            const guests = m.meeting_participants.filter(p => !m.host_id.includes(p.user_id));
-                                            if (guests.length > 0) {
-                                                const allGuestsDeclined = guests.every(g => g.response_status === 'declined');
-                                                return !allGuestsDeclined;
-                                            } else {
-                                                if (isLead) return myPart.response_status !== 'declined';
-                                                return myPart.response_status === 'accepted';
-                                            }
-                                        } else {
-                                            if (isLead) return myPart.response_status !== 'declined';
-                                            return myPart.response_status === 'accepted';
-                                        }
-                                    });
-                                    if (blocksSomeone) {
+                const guests = m.meeting_participants.filter(p => !m.host_id.includes(p.user_id));
+                if (guests.length > 0) {
+                    const allGuestsDeclined = guests.every(g => g.response_status === 'declined');
+                    return !allGuestsDeclined;
+                } else {
+                    return myPart.response_status === 'accepted';
+                }
+            } else {
+                return myPart.response_status === 'accepted';
+            }
+        });
+        if (blocksSomeone) {
                                         validMeetingIds.add(m.id);
                                     }
                                 });
@@ -2752,21 +2754,19 @@ validMeetingIds = [...validMeetingIds];
                                 const isLead = m.type === 'lead';
                                 
                                 if (isHost) {
-                                    const guests = m.meeting_participants.filter(p => !m.host_id.includes(p.user_id));
-                                    if (guests.length > 0) {
-                                        const allGuestsDeclined = guests.every(g => g.response_status === 'declined');
-                                        return !allGuestsDeclined;
-                                    } else {
-                                        if (isLead) return myPart.response_status !== 'declined';
-                                        return myPart.response_status === 'accepted';
-                                    }
-                                } else {
-                                    if (isLead) return myPart.response_status !== 'declined';
-                                    return myPart.response_status === 'accepted';
-                                }
-                            });
-                        });
-                        if (activeConflicts.length > 0) hasRealConflict = true;
+                        const guests = m.meeting_participants.filter(p => !m.host_id.includes(p.user_id));
+                        if (guests.length > 0) {
+                            const allGuestsDeclined = guests.every(g => g.response_status === 'declined');
+                            return !allGuestsDeclined;
+                        } else {
+                            return myPart.response_status === 'accepted';
+                        }
+                    } else {
+                        return myPart.response_status === 'accepted';
+                    }
+                });
+            });
+            if (activeConflicts.length > 0) hasRealConflict = true;
                     }
                 }
 
@@ -2929,7 +2929,27 @@ if (hasRealConflict) {
                 
                 let dayCalls = dbMeetings.filter(m => {
                     const localStartStr = new Intl.DateTimeFormat('en-CA', { timeZone: currentUserTimezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(m.start_time_utc));
-                    return localStartStr === dayStartStr;
+                    if (localStartStr !== dayStartStr) return false;
+
+                    // Fix: Only show meetings that are actually occupying the slot
+                    const participants = m.meeting_participants.map(p => p.user_id);
+                    m.host_id.forEach(hId => { if (!participants.includes(hId)) participants.push(hId); });
+                    
+                    return participants.some(userId => {
+                        const myPart = m.meeting_participants.find(p => p.user_id === userId);
+                        if (!myPart) return false;
+                        const isHost = m.host_id && m.host_id.includes(userId);
+                        if (isHost) {
+                            const guests = m.meeting_participants.filter(p => !m.host_id.includes(p.user_id));
+                            if (guests.length > 0) {
+                                return !guests.every(g => g.response_status === 'declined');
+                            } else {
+                                return myPart.response_status === 'accepted';
+                            }
+                        } else {
+                            return myPart.response_status === 'accepted';
+                        }
+                    });
                 });
 
                 // Filter by selected team members if active
@@ -3314,10 +3334,10 @@ function renderDashboard() {
 
             document.getElementById('cd-date').innerText = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).format(meetStart);
             document.getElementById('cd-time').innerText = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart) + ' - ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetEnd);
-            const list = document.getElementById('cd-participants-list');
-            
-            const validParticipants = m.meeting_participants.filter(p => p.response_status !== 'declined');
-            validParticipants.sort((a, b) => {
+
+        const list = document.getElementById('cd-participants-list');
+        const validParticipants = m.meeting_participants;
+        validParticipants.sort((a, b) => {
                 if (a.user_id === authUserId) return -1;
                 if (b.user_id === authUserId) return 1;
                 return 0;
@@ -3349,13 +3369,17 @@ function renderDashboard() {
                 const avatar = isMe ? currentUserProfile.avatar : teamMembers.find(tm => tm.id === p.user_id)?.avatar;
                 const init = (realNameForInit || 'U').charAt(0).toUpperCase();
                 let statusText = '';
-                if (m.host_id.includes(p.user_id)) {
-                    statusText = p.response_status === 'pending' ? 'Host (Pending)' : 'Host';
-                } else if (p.response_status === 'pending') {
-                    statusText = 'Pending Response';
-                }
-                
-                return `<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
+            if (m.host_id.includes(p.user_id)) {
+                statusText = p.response_status === 'pending' ? 'Host (Pending)' : 'Host';
+            } else if (p.response_status === 'pending') {
+                statusText = 'Pending Response';
+            } else if (p.response_status === 'declined') {
+                statusText = 'Declined';
+            } else if (p.response_status === 'accepted') {
+                statusText = 'Accepted';
+            }
+
+            return `<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg border border-white/5">
                     <div class="flex items-center space-x-3">
                         <div class="w-8 h-8 rounded-full bg-white/10 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden bg-cover bg-center" ${avatar ? `style="background-image: url(${avatar})"` : ''}>
                             ${avatar ? '' : init}
