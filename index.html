@@ -2524,38 +2524,54 @@
                             const maxUTC = new Date(baseDateUTC.getTime() + 48 * 60 * 60 * 1000).toISOString();
 
                             // OPTIMIZATION: Run independent queries concurrently using Promise.all to drastically reduce load time
-                            const [availRes, partRes, meets1Res] = await Promise.all([
-    supabaseClient.from('availability').select('*').in('user_id', participantIds),
-    supabaseClient.from('meeting_participants').select('meeting_id, response_status, user_id').in('user_id', participantIds),
-    supabaseClient.from('meetings').select('id, start_time_utc, end_time_utc, host_id, type').in('host_id', participantIds).gte('start_time_utc', minUTC).lt('start_time_utc', maxUTC)
-]);
+                            const [availRes, partRes] = await Promise.all([
+                                supabaseClient.from('availability').select('*').in('user_id', participantIds),
+                                supabaseClient.from('meeting_participants').select('meeting_id').in('user_id', participantIds)
+                            ]);
 
                             const availData = availRes.data;
-                            const partData = partRes.data;
-                            const meets1 = meets1Res.data;
+                            let meets1 = [];
+                            
+                            if (partRes.data && partRes.data.length > 0) {
+                                const involvedMeetingIds = [...new Set(partRes.data.map(p => p.meeting_id))];
+                                const meets1Res = await supabaseClient.from('meetings')
+                                    .select('id, start_time_utc, end_time_utc, host_id, type, meeting_participants(user_id, response_status)')
+                                    .in('id', involvedMeetingIds)
+                                    .gte('start_time_utc', minUTC)
+                                    .lt('start_time_utc', maxUTC);
+                                meets1 = meets1Res.data || [];
+                            }
                             
                             let validMeetingIds = new Set();
-
-if (meets1) {
-    meets1.forEach(m => {
-        const blocksSomeone = participantIds.some(userId => {
-            if (m.host_id && m.host_id.includes(userId)) {
-                const userPart = partData && partData.find(p => p.meeting_id === m.id && p.user_id === userId);
-                if (!userPart) return false;
-                
-                if (m.type === 'lead') {
-                    return userPart.response_status !== 'declined';
-                } else {
-                    return userPart.response_status === 'accepted';
-                }
-            }
-            return false;
-        });
-        if (blocksSomeone) {
-            validMeetingIds.add(m.id);
-        }
-    });
-}
+                            
+                            if (meets1.length > 0) {
+                                meets1.forEach(m => {
+                                    const blocksSomeone = participantIds.some(userId => {
+                                        const myPart = m.meeting_participants.find(p => p.user_id === userId);
+                                        if (!myPart) return false;
+                                        
+                                        const isHost = m.host_id && m.host_id.includes(userId);
+                                        const isLead = m.type === 'lead';
+                                        
+                                        if (isHost) {
+                                            const guests = m.meeting_participants.filter(p => !m.host_id.includes(p.user_id));
+                                            if (guests.length > 0) {
+                                                const allGuestsDeclined = guests.every(g => g.response_status === 'declined');
+                                                return !allGuestsDeclined;
+                                            } else {
+                                                if (isLead) return myPart.response_status !== 'declined';
+                                                return myPart.response_status === 'accepted';
+                                            }
+                                        } else {
+                                            if (isLead) return myPart.response_status !== 'declined';
+                                            return myPart.response_status === 'accepted';
+                                        }
+                                    });
+                                    if (blocksSomeone) {
+                                        validMeetingIds.add(m.id);
+                                    }
+                                });
+                            }
 
 validMeetingIds = [...validMeetingIds];
                             let allMeetings = [];
@@ -2712,34 +2728,47 @@ validMeetingIds = [...validMeetingIds];
                 // Last-minute surety check: verify availability rules and overlapping meetings haven't changed in the last few seconds
                 const participantIds = [authUserId, ...currentBookingParticipants.map(p => p.id)];
                 
-                const [availCheck, conflictCheck, partCheck] = await Promise.all([
-    supabaseClient.from('availability').select('user_id').in('user_id', participantIds),
-    supabaseClient.from('meetings').select('id, host_id, type')
-        .in('host_id', participantIds)
-        .lt('start_time_utc', activeSelectedSlot.endUTC)
-        .gt('end_time_utc', activeSelectedSlot.startUTC),
-    supabaseClient.from('meeting_participants').select('meeting_id, response_status, user_id').in('user_id', participantIds)
-]);
+                const [availCheck, partCheckInit] = await Promise.all([
+                    supabaseClient.from('availability').select('user_id').in('user_id', participantIds),
+                    supabaseClient.from('meeting_participants').select('meeting_id').in('user_id', participantIds)
+                ]);
 
-let hasRealConflict = false;
-if (conflictCheck.data && conflictCheck.data.length > 0) {
-    const activeConflicts = conflictCheck.data.filter(m => {
-        return participantIds.some(userId => {
-            if (m.host_id && m.host_id.includes(userId)) {
-                const userPartRecord = partCheck.data?.find(p => p.meeting_id === m.id && p.user_id === userId);
-                if (!userPartRecord) return false;
-                
-                if (m.type === 'lead') {
-                    return userPartRecord.response_status !== 'declined';
-                } else {
-                    return userPartRecord.response_status === 'accepted';
+                let hasRealConflict = false;
+                if (partCheckInit.data && partCheckInit.data.length > 0) {
+                    const involvedIds = [...new Set(partCheckInit.data.map(p => p.meeting_id))];
+                    const conflictCheck = await supabaseClient.from('meetings')
+                        .select('id, host_id, type, meeting_participants(user_id, response_status)')
+                        .in('id', involvedIds)
+                        .lt('start_time_utc', activeSelectedSlot.endUTC)
+                        .gt('end_time_utc', activeSelectedSlot.startUTC);
+
+                    if (conflictCheck.data && conflictCheck.data.length > 0) {
+                        const activeConflicts = conflictCheck.data.filter(m => {
+                            return participantIds.some(userId => {
+                                const myPart = m.meeting_participants.find(p => p.user_id === userId);
+                                if (!myPart) return false;
+                                
+                                const isHost = m.host_id && m.host_id.includes(userId);
+                                const isLead = m.type === 'lead';
+                                
+                                if (isHost) {
+                                    const guests = m.meeting_participants.filter(p => !m.host_id.includes(p.user_id));
+                                    if (guests.length > 0) {
+                                        const allGuestsDeclined = guests.every(g => g.response_status === 'declined');
+                                        return !allGuestsDeclined;
+                                    } else {
+                                        if (isLead) return myPart.response_status !== 'declined';
+                                        return myPart.response_status === 'accepted';
+                                    }
+                                } else {
+                                    if (isLead) return myPart.response_status !== 'declined';
+                                    return myPart.response_status === 'accepted';
+                                }
+                            });
+                        });
+                        if (activeConflicts.length > 0) hasRealConflict = true;
+                    }
                 }
-            }
-            return false;
-        });
-    });
-    if (activeConflicts.length > 0) hasRealConflict = true;
-}
 
 if (hasRealConflict) {
     showToast("Time slot is no longer available. Please select another.");
