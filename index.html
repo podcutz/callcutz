@@ -4413,4 +4413,37 @@ function showUserDeleteConfirm(email) {
             let exactProfileId = authUserId; // Default fallback
             
             // FOOLPROOF FETCH: Directly ask the profiles table for the EXACT ID currently stored in it
-       
+            // This guarantees 100% precision for the n8n webhook update.
+            if (currentUserProfile && currentUserProfile.email) {
+                const { data: dbProfile } = await supabaseClient.from('profiles').select('id').eq('email', currentUserProfile.email).maybeSingle();
+                if (dbProfile && dbProfile.id) {
+                    exactProfileId = dbProfile.id;
+                }
+            }
+            
+            // ENTERPRISE ARCHITECTURE: URLSearchParams safely encodes all parameters and prevents URI injection attacks.
+            // NOTE: We intentionally DO NOT migrate the redirect_uri to Supabase. OAuth 2.0 requires a public browser 
+            // redirect, and keeping this in the frontend is the strict industry standard.
+            const authParams = new URLSearchParams({
+                client_id: GOOGLE_CLIENT_ID,
+                redirect_uri: N8N_WEBHOOK_URL,
+                response_type: 'code',
+                scope: 'https://www.googleapis.com/auth/calendar.events',
+                access_type: 'offline',
+                prompt: 'consent',
+                state: exactProfileId // URLSearchParams automatically handles the encoding
+            });
+            
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${authParams.toString()}`;
+        }
+        
+        function closeGoogleSyncModal() {
+            const gModal = document.getElementById('google-sync-modal');
+            if (gModal) {
+                gModal.classList.add('hidden');
+                gModal.classList.remove('flex');
+            }
+        }
+    </script>
+</body>
+</html>
