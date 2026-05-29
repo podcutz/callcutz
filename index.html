@@ -204,23 +204,52 @@
             transition: all 0.2s;
         }
         .booking-day:hover:not(.empty) { background: rgba(255,255,255,0.1); }
-        .booking-day.selected { background: white; color: black; font-weight: bold;
-}
+        .booking-day.selected { background: white; color: black; font-weight: bold; }
         
         /* Hide the remove button on the first time slot, and hide the add button on subsequent slots */
         .time-slot:first-child .remove-slot-btn { display: none !important; }
         .time-slot:not(:first-child) .add-slot-btn { display: none !important; }
+
+        /* Custom Mobile Pull-to-Refresh Styles */
+        @media (max-width: 767px) {
+            body, html {
+                overscroll-behavior-y: none; /* Kills the native blue bar & Chrome spinner */
+            }
+        }
+        
+        #custom-ptr-loader {
+            position: fixed;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 28px;
+            border: 1.5px solid transparent;
+            border-top-color: white;
+            border-radius: 50%;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s, top 0.2s;
+            pointer-events: none;
+        }
+        .ptr-spinning {
+            animation: ptr-spin 0.6s linear infinite;
+        }
+        @keyframes ptr-spin {
+            0% { transform: translateX(-50%) rotate(0deg); }
+            100% { transform: translateX(-50%) rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-black text-white font-sans min-h-screen overflow-x-hidden flex">
 
-    
+    <div id="custom-ptr-loader" class="md:hidden"></div>
 
     <div id="page-login" class="fixed inset-0 z-[2000] bg-black hidden flex-col items-center justify-center">
         
         <div class="w-full max-w-sm p-8 bg-[#050505] border border-white/10 rounded-2xl shadow-2xl min-h-[500px] flex flex-col relative">
             <div class="flex items-center justify-center mb-8 shrink-0">
-                <img src="https://res.cloudinary.com/dobnqmfsg/image/upload/v1772612374/Untitled_design__1_-removebg-preview_ux1end.png" alt="Podcutz Logo" class="w-20 h-20 object-contain">
+                <img src="https://res.cloudinary.com/dobnqmfsg/image/upload/v1780061690/Untitled_design__2_-removebg-preview_p8g0sc.png" alt="Podcutz Logo" class="w-16 h-16 md:w-20 md:h-20 object-contain">
             </div>
             <h2 class="text-2xl font-bold capitalize tracking-wide text-center mb-2 shrink-0">Podcutz</h2>
             
@@ -3497,7 +3526,7 @@ function renderDashboard() {
                 <div onclick="if(window.innerWidth < 768) openDetailsModal('${s.id}')" class="relative p-3.5 md:p-4 bg-white/[0.02] md:bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex flex-wrap md:flex-nowrap items-center justify-between gap-2 md:gap-0 cursor-pointer md:cursor-auto z-0 overflow-hidden md:overflow-visible">
                         <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
                         ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="event.stopPropagation(); deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
-                        <div class="flex items-center gap-3 md:space-x-4 w-[75%] md:w-[35%]">
+                        <div class="flex items-center gap-3 md:space-x-4 flex-1 min-w-0 md:flex-none md:w-[35%]">
                             <div class="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-[#111] md:bg-zinc-800 text-white border border-white/10 md:border-white/20 flex flex-col shrink-0 items-center justify-center font-black relative shadow-sm">
                                 <span class="text-[8px] md:text-[8px] uppercase leading-none mt-0.5">${s.month}</span>
                                 <span class="text-sm md:text-sm leading-none">${s.date}</span>
@@ -3511,11 +3540,11 @@ function renderDashboard() {
                                     ${s.allDeclined ? '<span class="text-[7px] md:text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Declined</span>' : ''}
                                     ${s.isLive && !s.allDeclined ? '<div class="flex items-center space-x-1 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[7px] md:text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
                                     ${s.type === 'lead' ? '<div class="hidden md:flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[7px] md:text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
-                                    ${s.hasPending && !s.allDeclined ? '<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0"><span class="text-[7px] md:text-[8px] font-bold uppercase text-white/30 tracking-widest whitespace-nowrap">Pending</span></div>' : ''}
+                                    ${s.hasPending && !s.allDeclined ? '<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0 -translate-y-[1px]"><span class="text-[7px] md:text-[8px] font-light uppercase text-white/30 tracking-widest whitespace-nowrap">Pending</span></div>' : ''}
                                 </div>
-                                <div class="flex items-center justify-between w-full pr-1 md:pr-0">
+                                <div class="flex items-center justify-start w-full pr-1 md:pr-0 space-x-7">
                                     <p class="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest font-medium leading-tight shrink-0">${s.time}</p>
-                                    <div class="countdown-timer md:hidden text-[7.5px] text-white font-light tracking-wide capitalize text-right pl-2 truncate" data-start="${s.startUTC}"></div>
+                                    <div class="countdown-timer md:hidden text-[7.5px] text-white font-light tracking-wide capitalize text-left truncate ml-4" data-start="${s.startUTC}"></div>
                                 </div>
                                 <p class="text-[8px] md:text-[10px] text-white/60 font-light tracking-wide leading-tight truncate mt-0.5">Host: ${s.host}</p>
                             </div>
@@ -3523,7 +3552,7 @@ function renderDashboard() {
                     <div class="hidden md:flex flex-1 justify-center px-2">
                          <div class="countdown-timer text-[11px] text-white font tracking-wide capitalize text-center" data-start="${s.startUTC}"></div>
                     </div>
-                    <div class="flex items-center justify-end gap-2 w-[20%] md:w-[30%] md:pr-4 shrink-0">
+                    <div class="flex items-center justify-end gap-2 shrink-0 md:w-[30%] md:pr-4 pl-1">
                         ${(!s.allDeclined && s.isWithin15Mins && s.fullRecord.google_meet_link) ?
 `<button onclick="event.stopPropagation(); window.open('${s.fullRecord.google_meet_link}', '_blank')" class="bg-white text-black border border-white text-[8px] px-3.5 md:px-2.5 py-1 md:py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors w-14 md:w-auto text-center flex justify-center items-center">Join</button>` : ''}
                         <button onclick="event.stopPropagation(); openDetailsModal('${s.id}')" class="hidden md:block bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
@@ -3545,7 +3574,7 @@ function renderDashboard() {
                 return `
                 <div onclick="if(window.innerWidth < 768) openDetailsModal('${r.id}')" class="relative flex flex-wrap md:flex-nowrap items-center justify-between p-3.5 md:p-4 bg-white/[0.02] md:bg-white/5 rounded-2xl border border-transparent md:border-white/5 hover:bg-white/[0.08] transition-all group gap-2 md:gap-0 cursor-pointer md:cursor-auto z-0 overflow-hidden md:overflow-visible">
                     <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
-                    <div class="flex items-center gap-3 md:space-x-4 w-[65%] md:w-[35%]">
+                    <div class="flex items-center gap-3 md:space-x-4 flex-1 min-w-0 md:flex-none md:w-[35%]">
                         <div class="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-[#111] md:bg-zinc-800 text-white border border-white/10 md:border-white/20 flex flex-col shrink-0 items-center justify-center font-black shadow-sm">
                             <span class="text-[8px] md:text-[8px] uppercase leading-none mt-0.5">${r.month}</span>
                             <span class="text-sm md:text-sm leading-none">${r.date}</span>
@@ -3555,10 +3584,10 @@ function renderDashboard() {
                                 <h4 class="font-medium text-xs md:text-sm text-white capitalize tracking-wide block truncate w-full max-w-[140px] md:max-w-none">${r.title.length > 34 ? r.title.substring(0, 34) + '...' : r.title}</h4>
                                 ${isOccupied ? '<span class="text-[7px] md:text-[8px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Occupied</span>' : ''}
                             </div>
-                            <div class="flex items-center justify-between w-full pr-1 md:pr-0">
-                                <p class="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest font-medium leading-tight shrink-0">${r.time}</p>
-                                <div class="countdown-timer md:hidden text-[7.5px] text-white font-light tracking-wide capitalize text-right pl-2 truncate" data-start="${r.startUTC}"></div>
-                            </div>
+                            <div class="flex items-center justify-start w-full pr-1 md:pr-0 space-x-7">
+                                    <p class="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest font-medium leading-tight shrink-0">${r.time}</p>
+                                    <div class="countdown-timer md:hidden text-[7.5px] text-white font-light tracking-wide capitalize text-left truncate ml-2" data-start="${r.startUTC}"></div>
+                                </div>
                             <p class="text-[8px] md:text-[10px] text-white/60 font-light tracking-wide leading-tight truncate mt-0.5">Host: ${r.host}</p>
                         </div>
                     </div>
@@ -3566,7 +3595,7 @@ function renderDashboard() {
                     <div class="hidden md:flex flex-1 justify-center px-2">
                         <div class="countdown-timer text-[11px] text-white font tracking-wide capitalize text-center" data-start="${r.startUTC}"></div>
                     </div>
-                    <div class="flex flex-col items-end gap-1.5 w-[32%] shrink-0 pr-2">
+                    <div class="flex flex-col items-end gap-1.5 shrink-0 md:w-[32%] pr-2 pl-1">
         
                         <div class="flex gap-2 w-full max-w-[120px]">
                             ${isOccupied ? 
@@ -4923,6 +4952,59 @@ async function deleteMeeting(id, skipWebhook = false) {
                     });
             });
         }
+
+        // Custom Instagram-style Pull-to-Refresh (Mobile Only)
+        let ptrStartY = 0;
+        let ptrCurrentY = 0;
+        let ptrIsPulling = false;
+        const ptrLoader = document.getElementById('custom-ptr-loader');
+        const mainScrollArea = document.getElementById('mainContent');
+
+        document.addEventListener('touchstart', (e) => {
+            if (window.innerWidth >= 768) return; // Only run on mobile
+            if (mainScrollArea.scrollTop <= 0) {
+                ptrStartY = e.touches[0].clientY;
+                ptrIsPulling = true;
+                ptrLoader.classList.remove('ptr-spinning');
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!ptrIsPulling || window.innerWidth >= 768) return;
+            ptrCurrentY = e.touches[0].clientY;
+            let pullDistance = ptrCurrentY - ptrStartY;
+
+            if (pullDistance > 0 && mainScrollArea.scrollTop <= 0) {
+                if (e.cancelable) e.preventDefault(); // Extra safety to stop Chrome blue bar
+                
+                let visualDistance = Math.min(pullDistance * 0.4, 60);
+                ptrLoader.style.top = `${visualDistance - 20}px`;
+                ptrLoader.style.opacity = Math.min(visualDistance / 40, 1);
+                ptrLoader.style.transform = `translateX(-50%) rotate(${pullDistance * 2}deg)`;
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            if (!ptrIsPulling || window.innerWidth >= 768) return;
+            ptrIsPulling = false;
+            let pullDistance = ptrCurrentY - ptrStartY;
+
+            if (pullDistance > 90 && mainScrollArea.scrollTop <= 0) {
+                // Pulled far enough, trigger refresh
+                ptrLoader.style.top = '30px';
+                ptrLoader.style.transform = 'translateX(-50%)';
+                ptrLoader.classList.add('ptr-spinning');
+                
+                // Allow a tiny delay for visual smoothness before hard reload
+                setTimeout(() => {
+                    window.location.reload();
+                }, 600);
+            } else {
+                // Snap back if not pulled far enough
+                ptrLoader.style.top = '-50px';
+                ptrLoader.style.opacity = '0';
+            }
+        });
     </script>
 </body>
 </html>
