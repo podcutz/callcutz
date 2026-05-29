@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Callcutz</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Callcutz">
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dobnqmfsg/image/upload/v1771827572/Untitled_design-removebg-preview_bj0uah.png">
+    
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dobnqmfsg/image/upload/v1771827572/Untitled_design-removebg-preview_bj0uah.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -15,6 +24,9 @@
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                    },
                     keyframes: {
                         'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
                         'zoom-in': { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } }
@@ -27,6 +39,25 @@
         }
     </script>
     <style>
+        .uppercase { text-transform: capitalize !important; }
+        
+        @media (max-width: 767px) {
+            .mobile-animate-in {
+                animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            .mobile-animate-out {
+                animation: modalPopOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+        }
+        @keyframes modalPopIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes modalPopOut {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.95); }
+        }
+
         .cropper-view-box,.cropper-face{border-radius:50%}
         .cropper-view-box{outline:2px solid rgba(255,255,255,.8)}
         .cropper-dashed,.cropper-line,.cropper-point,.cropper-center{display:none!important}
@@ -102,11 +133,18 @@
         }
         .team-day-cell {
             background: black;
-            min-height: 120px;
-            padding: 10px;
+            min-height: 60px;
+            padding: 6px;
             position: relative;
             transition: background 0.2s;
             cursor: pointer;
+        }
+        @media (min-width: 768px) {
+            .team-day-cell {
+                min-height: 80px;
+                aspect-ratio: 1;
+                padding: 10px;
+            }
         }
         .team-day-cell:hover {
             background: rgba(255,255,255,0.03);
@@ -120,7 +158,7 @@
         }
         
         .calendar-squeeze {
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.5s ease-in-out;
         }
 
         @keyframes pulse-red {
@@ -176,11 +214,7 @@
 </head>
 <body class="bg-black text-white font-sans min-h-screen overflow-x-hidden flex">
 
-    <div class="md:hidden fixed inset-0 z-[9999] bg-black flex items-center justify-center p-8 text-center">
-        <p class="text-white text-sm font-bold capitalize tracking-[0.2em] leading-relaxed">
-            App is under progress for mobile devices, please open it in Desktop or Tablet sized devices to use it.
-        </p>
-    </div>
+    
 
     <div id="page-login" class="fixed inset-0 z-[2000] bg-black hidden flex-col items-center justify-center">
         
@@ -327,8 +361,8 @@
         </div>
     </div>
 
-    <div id="control-panel-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center z-[7000] opacity-0 transition-opacity duration-300" onclick="closeControlPanel()">
-        <div class="bg-[#050505] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
+    <div id="control-panel-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden md:items-center md:justify-center justify-end z-[7000] opacity-0 transition-opacity duration-300" onclick="closeControlPanel()">
+        <div id="cp-inner-container" class="bg-[#050505] border-l md:border border-white/10 rounded-none md:rounded-2xl w-full md:max-w-2xl h-full md:h-auto md:max-h-[80vh] flex flex-col overflow-hidden shadow-2xl relative translate-x-full md:translate-x-0 transition-transform duration-300 ease-out" onclick="event.stopPropagation()">
             
             <div id="cp-delete-confirm" class="absolute inset-0 bg-black/40 backdrop-blur-sm z-[7050] hidden flex-col items-center justify-center">
                 <div class="bg-[#0a0a0a] border border-white/10 p-6 rounded-2xl shadow-2xl text-center w-3/4 max-w-sm">
@@ -340,29 +374,32 @@
                 </div>
             </div>
 
-            <div class="p-6 border-b border-white/10 flex items-center justify-between shrink-0">
-                <div>
-                    <h2 class="text-xl font-bold text-white tracking-tight">App Access Control</h2>
-                    <p class="text-[10px] text-white/40 uppercase tracking-widest mt-1">Manage who can log into Podcutz</p>
+            <div class="p-6 md:border-b border-white/10 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <button onclick="closeControlPanel()" class="md:hidden p-1.5 -ml-2 text-zinc-400 hover:text-white rounded-lg transition-colors active:scale-90"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                    <div>
+                        <h2 class="text-xl font-bold text-white tracking-tight">App Access Control</h2>
+                        <p class="hidden md:block text-[10px] text-white/40 uppercase tracking-widest mt-1">Manage who can log into Podcutz</p>
+                    </div>
                 </div>
-                <button onclick="closeControlPanel()" class="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="closeControlPanel()" class="hidden md:block p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             
             <div class="px-6 py-4 shrink-0 bg-transparent">
                 <div class="flex items-center justify-between mb-4">
                     <label class="text-sm text-white capitalize font-bold tracking-wide block">Grant Access To New User</label>
-                    <button id="grant-access-btn" onclick="grantAccessUser()" class="px-5 py-2.5 bg-white text-black text-xs font-bold capitalize tracking-wide rounded-lg transition-all hover:bg-zinc-200 shrink-0 flex items-center h-fit">
+                    <button id="grant-access-btn" onclick="grantAccessUser()" class="hidden md:flex px-4 md:px-5 py-2 md:py-2.5 bg-white text-black text-xs font-bold capitalize tracking-wide rounded-lg transition-all hover:bg-zinc-200 shrink-0 items-center h-fit">
                         Grant Access <i data-lucide="plus" class="w-4 h-4 ml-1.5"></i>
                     </button>
                 </div>
                 <div class="flex flex-col gap-3 w-full">
                     <div>
                         <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Email</label>
-                        <input type="email" id="grant-access-email" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="user@email.com">
+                        <input type="email" id="grant-access-email" oninput="validateGrantAccessMobile()" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="user@email.com">
                     </div>
                     <div>
                         <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block">Role</label>
-                        <input type="text" id="grant-access-role" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="e.g. Manager">
+                        <input type="text" id="grant-access-role" oninput="validateGrantAccessMobile()" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors" placeholder="e.g. Manager">
                     </div>
                 </div>
                 <p id="grant-access-error" class="text-red-500 text-[10px] font-bold mt-2 hidden"></p>
@@ -470,16 +507,60 @@
         </div>
     </aside>
 
+    <nav id="mobile-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-[#050505] border-t border-white/10 z-[100] hidden pb-safe">
+        <div class="flex items-center justify-evenly w-full py-4 px-2">
+            <button onclick="showPage('dashboard')" class="mobile-nav-item flex justify-center items-center text-zinc-500 hover:text-white transition-colors w-12 h-8" data-target="dashboard">
+                <i data-lucide="layout-dashboard" class="w-[22px] h-[22px]"></i>
+            </button>
+            <button onclick="showPage('availability')" class="mobile-nav-item flex justify-center items-center text-zinc-500 hover:text-white transition-colors w-12 h-8" data-target="availability">
+                <i data-lucide="clock" class="w-[22px] h-[22px]"></i>
+            </button>
+            <button onclick="showPage('schedule')" class="mobile-nav-item flex justify-center items-center text-zinc-500 hover:text-white transition-colors w-12 h-8" data-target="schedule">
+                <i data-lucide="calendar" class="w-[22px] h-[22px]"></i>
+            </button>
+            <button id="mobile-nav-teamview" onclick="showPage('teamview')" class="mobile-nav-item hidden justify-center items-center text-zinc-500 hover:text-white transition-colors w-12 h-8" data-target="teamview">
+                <i data-lucide="users" class="w-[22px] h-[22px]"></i>
+            </button>
+            <button onclick="showPage('profile')" class="mobile-nav-item flex justify-center items-center text-zinc-500 hover:text-white transition-colors w-12 h-8" data-target="profile">
+                <i data-lucide="user" class="w-[22px] h-[22px]"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div id="mobile-account-menu" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] hidden flex-col justify-end" onclick="toggleMobileAccountMenu()">
+        <div class="bg-[#0a0a0a] border-t border-white/10 rounded-t-2xl p-4 flex flex-col space-y-2 pb-8" onclick="event.stopPropagation()">
+            <div class="flex items-center space-x-3 mb-4 px-2">
+                <div id="mobile-user-avatar" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold border border-white/10 bg-cover bg-center"></div>
+                <div>
+                    <p id="mobile-user-name" class="text-sm font-bold text-white"></p>
+                    <p id="mobile-user-role" class="text-[10px] text-white/40 capitalize tracking-widest"></p>
+                </div>
+            </div>
+            <button onclick="openProfileModal(); toggleMobileAccountMenu();" class="w-full flex items-center space-x-3 px-4 py-3 text-sm text-white hover:bg-white/10 rounded-xl transition-colors">
+                <i data-lucide="user" class="w-5 h-5"></i>
+                <span>Profile</span>
+            </button>
+            <button id="mobile-operator-panel-btn" onclick="openControlPanel(); toggleMobileAccountMenu();" class="hidden w-full items-center space-x-3 px-4 py-3 text-sm text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors">
+                <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                <span>Control Panel</span>
+            </button>
+            <button onclick="handleLogout();" class="w-full flex items-center space-x-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-colors">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                <span>Log Out</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Main Content Area -->
-    <main id="mainContent" class="relative content-transition h-screen flex-1 flex flex-col overflow-y-auto">
+    <main id="mainContent" class="relative content-transition h-screen flex-1 flex flex-col overflow-y-auto pb-24 md:pb-0">
      
-        <header class="p-8 pb-6 bg-black flex justify-between items-end relative">
-            <div>
+        <header class="p-5 pt-8 md:pt-8 md:p-8 pb-4 md:pb-6 bg-black flex flex-row justify-between items-center md:items-end relative gap-4 w-full">
+            <div class="mt-2 md:mt-0 w-full">
                 <h1 id="page-title" class="text-4xl font-bold tracking-tighter text-white"></h1>
                 <p id="page-subtitle" class="text-[10px] text-white/40 uppercase tracking-widest mt-2 hidden"></p>
             </div>
-            <div class="flex items-center space-x-4">
-                <button onclick="saveAvailability()" id="save-avail-btn" class="bg-white text-black text-xs px-6 py-2.5 font-semibold capitalize tracking-wide rounded-full hidden transition-all hover:bg-zinc-200 shadow-lg">Save Changes</button>
+            <div class="flex items-center space-x-4 mt-2 md:mt-0 shrink-0">
+                <button onclick="saveAvailability()" id="save-avail-btn" class="bg-white text-black text-[11px] md:text-xs px-4 md:px-6 py-2 md:py-2.5 font-semibold capitalize tracking-wide rounded-xl md:rounded-full hidden transition-all hover:bg-zinc-200 shadow-lg">Save Changes</button>
                 
                 <div id="team-view-filters" class="hidden flex items-center space-x-4">
                     <button onclick="toggleFilterModal()" class="flex items-center space-x-2 bg-white text-black px-4 py-2 rounded-lg hover:bg-zinc-200 transition-colors">
@@ -491,23 +572,23 @@
             </div>
         </header>
 
-        <div class="w-full h-[1px] bg-white/10"></div>
+        <div class="hidden md:block w-full h-[1px] bg-white/10"></div>
 
         <!-- DASHBOARD PAGE -->
         <div id="page-dashboard" class="page hidden w-full">
-            <section class="p-8 flex-1 bg-black w-full">
-                <div class="w-full">
+            <section class="p-4 md:p-8 flex-1 bg-black w-full">
+                <div class="w-full max-w-full">
                     <div class="flex justify-between items-end mb-6">
-                        <h2 class="text-xl font-bold uppercase tracking-widest text-white">Meetings</h2>
+                        <h2 class="text-xl font-semibold capitalize tracking-wide text-white" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Meetings</h2>
                         <div class="relative">
-                            <div id="tz-dropdown-btn" onclick="toggleTzDropdown()" class="bg-zinc-900 border border-white/10 rounded-full px-4 py-2 flex items-center justify-between shadow-[0_0_20px_rgba(255,255,255,0.05)] cursor-pointer w-64 group hover:border-white/30 transition-all">
+                            <div id="tz-dropdown-btn" onclick="toggleTzDropdown()" class="bg-zinc-900 border border-white/10 rounded-xl md:rounded-full px-3 md:px-4 py-2 flex items-center justify-between shadow-[0_0_20px_rgba(255,255,255,0.05)] cursor-pointer w-36 md:w-64 group hover:border-white/30 transition-all">
                                 <div class="flex items-center space-x-2 overflow-hidden w-full">
                                     <i data-lucide="globe" class="w-3.5 h-3.5 text-white shrink-0"></i>
                                     <span id="tz-selected-text" class="text-[10px] text-white font-light tracking-wide truncate pointer-events-none w-full text-left">Loading...</span>
                                 </div>
                                 <i data-lucide="chevron-left" id="tz-chevron" class="w-3 h-3 text-white/40 ml-2 shrink-0 transition-transform duration-200 pointer-events-none"></i>
                             </div>
-                            <div id="tz-dropdown-menu" class="hidden absolute top-full right-0 mt-2 w-72 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl z-[5000] flex flex-col overflow-hidden">
+                            <div id="tz-dropdown-menu" class="hidden absolute top-full right-0 mt-2 w-64 md:w-72 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl z-[5000] flex flex-col overflow-hidden">
                                 <div class="p-2 border-b border-white/10">
                                     <input type="text" id="tz-search" oninput="filterTimezones()" placeholder="Search city or timezone..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-white font-light focus:outline-none focus:border-white/30 transition-colors">
                                 </div>
@@ -515,13 +596,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bg-black rounded-xl border border-white/10 overflow-hidden shadow-[0_0_50px_rgba(255,255,255,0.02)]">
-                        <div class="flex border-b border-white/10 px-6 pt-2">
-                            <button onclick="switchTab('upcoming')" id="tab-upcoming" class="px-4 py-4 text-xs font-light tracking-widest transition-all tab-active capitalize">Upcoming</button>
-                            <button onclick="switchTab('requests')" id="tab-requests" class="px-4 py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize">Requests <span id="request-count" class="ml-1 bg-white text-black px-1.5 rounded-full text-[9px]">0</span></button>
-                            <button onclick="switchTab('past')" id="tab-past" class="px-4 py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize">Past</button>
+                    <div class="bg-black rounded-xl border border-white/10 overflow-hidden shadow-none md:shadow-[0_0_50px_rgba(255,255,255,0.02)]">
+                        <div class="flex overflow-x-auto border-b border-white/10 px-4 md:px-6 pt-2 custom-scrollbar">
+                            <button onclick="switchTab('upcoming')" id="tab-upcoming" class="px-4 py-3 md:py-4 text-xs font-light tracking-widest transition-all tab-active capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Upcoming</button>
+                            <button onclick="switchTab('requests')" id="tab-requests" class="px-4 py-3 md:py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Requests <span id="request-count" class="ml-1 bg-white text-black px-1.5 rounded-full text-[9px]">0</span></button>
+                            <button onclick="switchTab('past')" id="tab-past" class="px-4 py-3 md:py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Past</button>
                         </div>
-                        <div class="h-[480px] overflow-y-auto overflow-x-hidden">
+                        <div class="h-[60vh] md:h-[480px] overflow-y-auto overflow-x-hidden">
                             <div id="content-upcoming" class="p-4 space-y-2"></div>
                         <div id="content-requests" class="hidden p-4 space-y-2"></div>
                         <div id="content-past" class="hidden p-4 space-y-2"></div>
@@ -534,10 +615,10 @@
         </div>
 
         <!-- AVAILABILITY PAGE -->
-        <div id="page-availability" class="page hidden w-full">
-            <section class="p-4 md:p-8 flex-1 bg-black w-full">
+        <div id="page-availability" class="page hidden w-full" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">
+            <section class="px-4 pt-6 md:pt-1 pb-64 md:p-8 flex-1 bg-black w-full">
                 <div class="w-full">
-                    <div class="mb-6 p-6 bg-white/[0.03] rounded-xl border border-white/10 flex items-center justify-between">
+                    <div class="mb-6 p-6 bg-white/[0.03] rounded-xl border border-white/10 hidden md:flex items-center justify-between">
                         <div class="flex items-center space-x-4">
                
                              <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
@@ -561,10 +642,10 @@
         </div>
 
         <!-- SCHEDULE CALL PAGE -->
-        <div id="page-schedule" class="page hidden flex-1 flex flex-col">
+        <div id="page-schedule" class="page hidden flex-1 flex flex-col" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">
             <section class="p-8 flex-1 bg-black">
                 <div id="team-gallery" class="max-w-6xl">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+                    <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4"></div>
                 </div>
 
                 <div id="booking-interface" class="max-w-4xl hidden mx-auto mt-0">
@@ -578,7 +659,7 @@
                         </button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
-                        <div class="md:col-span-4 border-r border-white/10 pr-8">
+                        <div class="md:col-span-4 border-b md:border-b-0 md:border-r border-white/10 pb-8 md:pb-0 md:pr-8">
                             <div class="flex flex-wrap gap-3 mb-4 items-center" id="selected-participants-wrap">
                                 <div id="b-avatar" class="w-20 h-20 rounded bg-white text-black flex items-center justify-center font-black text-2xl"></div>
                                 <button onclick="openGuestModal()" class="w-20 h-20 rounded border-2 border-dashed border-white/20 bg-white/[0.02] hover:border-white/60 hover:bg-white/10 flex flex-col items-center justify-center transition-all group">
@@ -629,7 +710,7 @@
         <!-- TEAM VIEW PAGE -->
         <div id="page-teamview" class="page hidden flex-1 flex flex-col overflow-hidden">
              <div class="flex h-full">
-                <div id="team-calendar-container" class="calendar-squeeze flex-1 p-8 overflow-y-auto">
+                <div id="team-calendar-container" class="calendar-squeeze flex-1 p-4 md:p-8 overflow-y-auto">
                     <div class="bg-black border border-white/10 rounded-2xl shadow-2xl p-6">
                         <div class="flex items-center justify-between mb-6">
                             <h2 id="team-month-label" class="text-xl font-bold uppercase tracking-widest">Month 2024</h2>
@@ -644,10 +725,13 @@
                         <div id="team-grid" class="team-calendar-grid border border-white/5 bg-transparent gap-[1px]"></div>
                     </div>
                 </div>
-                <div id="call-sidelist" class="hidden w-0 opacity-0 border-l border-white/10 bg-black flex flex-col calendar-squeeze overflow-hidden shrink-0">
-                    <div class="p-4 border-b border-white/10 flex items-center justify-between">
-                        <h3 id="side-date-title" class="text-lg font-bold truncate pr-4"></h3>
-                         <button onclick="closeCallList()" class="p-2 hover:bg-white/5 rounded shrink-0 transition-colors"><i data-lucide="x" class="w-4 h-4 text-white/60"></i></button>
+                <div id="call-sidelist" class="hidden w-0 opacity-0 border-l border-white/10 bg-black flex flex-col calendar-squeeze overflow-hidden shrink-0 right-0 top-0 bottom-0 translate-x-full md:translate-x-0">
+                    <div class="p-4 pt-6 md:pt-4 border-b border-white/10 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <button onclick="closeCallList()" class="md:hidden p-1.5 -ml-2 hover:bg-white/5 rounded-full shrink-0 transition-colors"><i data-lucide="arrow-left" class="w-5 h-5 text-white"></i></button>
+                            <h3 id="side-date-title" class="text-lg font-bold truncate pr-4"></h3>
+                        </div>
+                         <button onclick="closeCallList()" class="hidden md:block p-2 hover:bg-white/5 rounded shrink-0 transition-colors"><i data-lucide="x" class="w-4 h-4 text-white/60"></i></button>
                     </div>
                     <div id="call-log-container" class="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
                         <div id="live-calls-wrapper"></div>
@@ -656,6 +740,34 @@
                     </div>
                 </div>
              </div>
+        </div>
+
+        <div id="page-profile" class="page hidden flex-1 flex flex-col">
+            <section class="p-6 md:p-8 flex-1 bg-black">
+                <div class="max-w-md mx-auto mt-4">
+                    <div class="flex items-center space-x-4 mb-8 p-4 bg-white/[0.03] border border-white/10 rounded-2xl">
+                        <div id="page-mobile-user-avatar" class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold border border-white/10 bg-cover bg-center"></div>
+                        <div>
+                            <p id="page-mobile-user-name" class="text-xl font-bold text-white"></p>
+                            <p id="page-mobile-user-role" class="text-[12px] text-white/40 capitalize tracking-widest mt-1"></p>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <button onclick="openProfileModal();" class="w-full flex items-center space-x-4 px-5 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-colors">
+                            <i data-lucide="user" class="w-5 h-5 text-white"></i>
+                            <span class="text-sm font-semibold text-white tracking-wide">Edit Profile</span>
+                        </button>
+                        <button id="page-mobile-operator-panel-btn" onclick="openControlPanel();" class="hidden w-full items-center space-x-4 px-5 py-4 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl transition-colors">
+                            <i data-lucide="shield-alert" class="w-5 h-5 text-emerald-400"></i>
+                            <span class="text-sm font-semibold text-emerald-400 tracking-wide">Control Panel</span>
+                        </button>
+                        <button onclick="handleLogout();" class="w-full flex items-center space-x-4 px-5 py-4 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-2xl transition-colors">
+                            <i data-lucide="log-out" class="w-5 h-5 text-red-400"></i>
+                            <span class="text-sm font-semibold text-red-400 tracking-wide">Log Out</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
         </div>
 <!-- GLOBAL SUCCESS OVERLAY -->
 
@@ -714,12 +826,18 @@
     </div>
 </div>
 
-<div id="modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center z-[5000] opacity-0 transition-opacity duration-500">
-            <div id="modal-container" class="bg-[#09090b] border border-white/10 rounded-2xl px-8 pb-8 pt-4 w-full max-w-[450px] shadow-[0_32px_64px_-15px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col min-h-[400px]" onclick="event.stopPropagation()">
-                <button onclick="closeProfileModal()" class="absolute top-4 right-4 z-20 text-zinc-500 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></button>
-                <div id="profile-view" class="flex flex-col items-start w-full flex-grow pt-4">
-                    <div class="flex items-center space-x-6 mb-8">
-                        <div class="relative group cursor-pointer" onclick="document.getElementById('file-input').click()">
+<div id="modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden md:items-center md:justify-center justify-end z-[5000] opacity-0 transition-opacity duration-500">
+            <div id="modal-container" class="bg-[#09090b] border-l md:border border-white/10 rounded-none md:rounded-2xl px-8 pb-8 pt-4 w-full md:max-w-[450px] shadow-[0_32px_64px_-15px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col h-full md:h-auto md:min-h-[400px] translate-x-full md:translate-x-0 transition-transform duration-300 ease-out" onclick="event.stopPropagation()">
+                <button onclick="closeProfileModal()" class="hidden md:block absolute top-4 right-4 z-20 text-zinc-500 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></button>
+                <div id="profile-view" class="flex flex-col items-start w-full flex-grow pt-4 md:pt-4">
+
+                    <div class="md:hidden flex items-center space-x-3 mb-6 w-full">
+                        <button onclick="closeProfileModal()" class="p-1.5 -ml-1.5 text-zinc-400 hover:text-white rounded-lg transition-colors active:scale-90"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                        <h2 class="text-xl font-bold text-zinc-100 tracking-tight leading-tight">Edit Profile</h2>
+                    </div>
+
+                    <div class="flex items-center space-x-0 md:space-x-6 mb-6 md:mb-8 w-full">
+                        <div class="relative group cursor-pointer shrink-0" onclick="document.getElementById('file-input').click()">
                             <div class="w-20 h-20 rounded-full bg-zinc-800 ring-[1px] ring-white/20 shadow-2xl overflow-hidden relative flex items-center justify-center">
                                 <div id="avatar-initials" class="absolute inset-0 flex items-center justify-center text-3xl font-light tracking-tighter text-zinc-100 bg-gradient-to-tr from-zinc-800 via-zinc-900 to-zinc-700"></div>
                                 <img id="avatar-image" class="absolute inset-0 w-full h-full object-cover hidden" src="" alt="Profile">
@@ -727,20 +845,21 @@
                             </div>
                             <div class="absolute bottom-0 right-0 w-6 h-6 bg-white rounded-full flex items-center justify-center border-[3px] border-[#09090b] text-black shadow-lg transform group-hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path></svg></div>
                         </div>
-                        <div>
+                        
+                        <div class="hidden md:block">
                             <h2 class="text-xl font-semibold text-zinc-100 tracking-tight leading-tight">Edit Profile</h2>
                             <p class="text-[10px] text-zinc-400 font-medium mt-1 uppercase tracking-widest">Update your details</p>
                         </div>
                     </div>
 
-                    <div class="w-full space-y-1">
-                        <div id="name-container" class="group relative bg-transparent hover:bg-white/5 rounded-lg px-4 py-2.5 transition-colors border border-transparent flex items-center justify-between">
+                    <div class="w-full space-y-1 relative mt-2 md:mt-0">
+                        <div id="name-container" class="md:static absolute top-[-104px] left-[104px] w-[calc(100%-104px)] md:w-full h-20 md:h-auto group md:bg-transparent md:hover:bg-white/5 rounded-lg px-0 py-0 md:px-4 md:py-2.5 transition-colors border border-transparent flex items-center justify-between">
                             <div class="flex-1">
-                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1 block cursor-default pointer-events-none">Name</label>
-                                <div id="modal-display-name" class="text-sm text-white cursor-default pointer-events-none"></div>
-                                <input type="text" id="modal-input-name" class="hidden w-full bg-transparent border-none text-sm text-white focus:outline-none p-0 focus:ring-0" value="">
+                                <label class="text-[10px] text-white/40 uppercase font-black tracking-widest mb-0.5 md:mb-1 block cursor-default pointer-events-none">Name</label>
+                                <div id="modal-display-name" class="text-xl md:text-sm font-semibold md:font-normal text-white cursor-default pointer-events-none"></div>
+                                <input type="text" id="modal-input-name" class="hidden w-full bg-transparent border-none text-xl md:text-sm font-semibold md:font-normal text-white focus:outline-none p-0 focus:ring-0" value="">
                             </div>
-                            <button id="edit-name-btn" onclick="enableNameEdit()" class="p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button id="edit-name-btn" onclick="enableNameEdit()" class="p-1.5 text-zinc-400 hover:text-white md:text-white opacity-100 transition-opacity">
                                 <i data-lucide="pencil" class="w-4 h-4"></i>
                             </button>
                             <button id="save-name-btn" onclick="saveNameEdit()" class="hidden p-1.5 text-white transition-opacity bg-white/10 hover:bg-white/20 rounded">
@@ -768,7 +887,7 @@
                                 <div class="text-sm text-white tracking-[0.2em] mt-1">••••••••••••</div>
                                 <p class="text-[8px] text-white/30 mt-1">For security, passwords cannot be retrieved from the database.</p>
                             </div>
-                            <button onclick="showPasswordView()" class="p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 rounded-lg">
+                            <button onclick="showPasswordView()" class="p-1.5 text-white opacity-100 transition-opacity hover:bg-white/10 rounded-lg">
                                 <i data-lucide="pencil" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -917,7 +1036,7 @@
             Timezone updated
         </div>
 
-        <div id="callDetailsModal" class="hidden fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity">
+        <div id="callDetailsModal" class="hidden fixed inset-0 z-[7000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity">
             <div class="relative w-full max-w-lg bg-[#050505] border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] overflow-hidden flex flex-col max-h-[90vh]">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
                      <div class="flex items-center space-x-3">
@@ -930,7 +1049,7 @@
                     <button onclick="closeDetailsModal()" class="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
                 </div>
                 <div class="px-6 py-6 space-y-6 overflow-y-auto custom-scrollbar">
-                    <div id="cd-delete-confirm" class="absolute inset-0 bg-black/40 backdrop-blur-sm z-[4050] hidden flex-col items-center justify-center">
+                    <div id="cd-delete-confirm" class="absolute inset-0 bg-black/40 backdrop-blur-sm z-[7050] hidden flex-col items-center justify-center">
                         <div class="bg-[#0a0a0a] border border-white/10 p-6 rounded-2xl shadow-2xl text-center w-3/4 max-w-sm">
                             <p class="text-sm font-bold text-white mb-6">Do you want to delete this meeting?</p>
                             <div class="flex items-center justify-center gap-4">
@@ -982,6 +1101,17 @@
 
     
 <script>
+    function toggleMobileAccountMenu() {
+        const menu = document.getElementById('mobile-account-menu');
+        if (menu.classList.contains('hidden')) {
+            menu.classList.remove('hidden');
+            menu.classList.add('flex');
+        } else {
+            menu.classList.add('hidden');
+            menu.classList.remove('flex');
+        }
+    }
+
     function showSuccessScreen(title, sub) {
         const overlay = document.getElementById('success-overlay');
         
@@ -1244,9 +1374,21 @@
             const saveBtn = document.getElementById('save-avail-btn');
             if (saveBtn && pageId !== 'availability') saveBtn.classList.add('hidden');
             if(pageId === 'dashboard') {
-                const firstName = currentUserProfile && currentUserProfile.full_name ?
- currentUserProfile.full_name.split(' ')[0] : 'User';
-                title.innerText = `Welcome back, ${firstName}`;
+                const fullName = currentUserProfile && currentUserProfile.full_name ? currentUserProfile.full_name : 'User';
+                const firstName = fullName.split(' ')[0];
+                const avatarUrl = currentUserProfile && currentUserProfile.avatar ? currentUserProfile.avatar : '';
+                const avatarInit = firstName.charAt(0).toUpperCase();
+                
+                title.innerHTML = `
+                    <div class="md:hidden flex items-center gap-3.5 mt-4">
+                        <div id="dashboard-mobile-avatar" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold border border-white/10 bg-cover bg-center shrink-0 shadow-sm" ${avatarUrl ? `style="background-image: url('${avatarUrl}')"` : ''}>${avatarUrl ? '' : avatarInit}</div>
+                        <div class="flex flex-col justify-center h-12">
+                            <span class="text-sm text-white/60 tracking-wide font-light capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Welcome back,</span>
+                            <span class="text-xl text-white leading-none tracking-wide font-light capitalize mt-0.5" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">${fullName}</span>
+                        </div>
+                    </div>
+                    <span class="hidden md:inline">Welcome back, ${firstName}</span>
+                `;
             }
             if(pageId === 'availability') title.innerText = "Availability";
  if(pageId === 'schedule') { 
@@ -1259,8 +1401,8 @@
  // Ensure we reset to the gallery view
     initScheduleGallery();
  }
-            if(pageId === 'teamview') { title.innerText = "Team Schedule";
- filters.classList.remove('hidden'); initTeamView(); }
+            if(pageId === 'teamview') { title.innerText = "Team Schedule"; filters.classList.remove('hidden'); initTeamView(); }
+            if(pageId === 'profile') { title.innerText = "Profile"; }
 
             // Update Nav Active States
             document.querySelectorAll('.nav-item').forEach(btn => {
@@ -1271,6 +1413,20 @@
                 } else {
                     btn.classList.remove('bg-white', 'text-black', 'font-bold', 'shadow-lg', 'shadow-white/10');
                     btn.classList.add('text-zinc-500', 'hover:text-white', 'hover:bg-zinc-900');
+                }
+            });
+
+            // Update Mobile Nav Active States
+            document.querySelectorAll('.mobile-nav-item').forEach(btn => {
+                const target = btn.getAttribute('data-target');
+                if (target) {
+                    if (target === pageId) {
+                        btn.classList.remove('text-zinc-500');
+                        btn.classList.add('text-white');
+                    } else {
+                        btn.classList.remove('text-white');
+                        btn.classList.add('text-zinc-500');
+                    }
                 }
             });
         }
@@ -1351,15 +1507,17 @@
                 if (profileError) throw profileError;
 
                 // Fallback to email name if the profile row is missing or blocked by RLS
-                currentUserProfile = profileData ||
-                { full_name: email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null, google_access_token: null };
+                currentUserProfile = profileData || { full_name: email.split('@')[0], role: 'member', account_level: 'Member', google_refresh_token: null, google_access_token: null };
                 currentUserProfile.email = email;
 
                 // UNLOCK OPERATOR UI
                 if (currentUserProfile.account_level === 'Operator') {
                     const opBtn = document.getElementById('operator-panel-btn');
-                    opBtn.classList.remove('hidden');
-                    opBtn.classList.add('flex');
+                    if(opBtn) { opBtn.classList.remove('hidden'); opBtn.classList.add('flex'); }
+                    const mobOpBtn = document.getElementById('mobile-operator-panel-btn');
+                    if(mobOpBtn) { mobOpBtn.classList.remove('hidden'); mobOpBtn.classList.add('flex'); }
+                    const pageMobOpBtn = document.getElementById('page-mobile-operator-panel-btn');
+                    if(pageMobOpBtn) { pageMobOpBtn.classList.remove('hidden'); pageMobOpBtn.classList.add('flex'); }
                 }
 
                 completeLogin();
@@ -1589,9 +1747,12 @@
             loginPage.classList.remove('flex');
             
             // UI RECOVERY FIX: Restore the app shell in case it was hidden by a previous ghost-logout
-            document.getElementById('sidebar').classList.remove('hidden');
-            document.getElementById('sidebar').classList.add('md:flex');
+            document.getElementById('sidebar').classList.add('hidden'); // Keeps it properly hidden on mobile
+            document.getElementById('sidebar').classList.add('md:flex'); // Safely overrides 'hidden' only on desktop
             document.getElementById('mainContent').classList.remove('hidden');
+            
+            const mobileNav = document.getElementById('mobile-nav');
+            if(mobileNav) mobileNav.classList.remove('hidden');
             
             currentUserTimezone = currentUserProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
             populateTimezones();
@@ -1604,6 +1765,19 @@
             document.getElementById('sidebar-user-name').innerText = name;
             document.getElementById('sidebar-user-role').innerText = role;
             document.getElementById('sidebar-user-init').innerText = init;
+            
+            const mobileUserName = document.getElementById('mobile-user-name');
+            if (mobileUserName) {
+                mobileUserName.innerText = name;
+                document.getElementById('mobile-user-role').innerText = role;
+                document.getElementById('mobile-user-avatar').innerText = init;
+            }
+            const pageMobileUserName = document.getElementById('page-mobile-user-name');
+            if (pageMobileUserName) {
+                pageMobileUserName.innerText = name;
+                document.getElementById('page-mobile-user-role').innerText = role;
+                document.getElementById('page-mobile-user-avatar').innerText = init;
+            }
 
             await fetchCoreData(true);
             setupRealtimeSubscriptions();
@@ -1615,7 +1789,6 @@
             const teamViewNav = document.getElementById('nav-teamview');
             // DYNAMIC RBAC: Automatically allows any current or future 'Operator' to view the Team Calendar
             const isAllowedTeamView = currentUserProfile?.account_level === 'Operator';
-            
             if (teamViewNav) {
                 if (isAllowedTeamView) {
                     teamViewNav.classList.remove('hidden');
@@ -1623,6 +1796,17 @@
                 } else {
                     teamViewNav.classList.add('hidden');
                     teamViewNav.classList.remove('flex');
+                }
+            }
+            
+            const mobileTeamViewNav = document.getElementById('mobile-nav-teamview');
+            if (mobileTeamViewNav) {
+                if (isAllowedTeamView) {
+                    mobileTeamViewNav.classList.remove('hidden');
+                    mobileTeamViewNav.classList.add('flex');
+                } else {
+                    mobileTeamViewNav.classList.add('hidden');
+                    mobileTeamViewNav.classList.remove('flex');
                 }
             }
             
@@ -1701,9 +1885,39 @@
                     if (myProfile.profile_image) {
                         sidebarInit.innerText = '';
                         sidebarInit.style.backgroundImage = `url(${myProfile.profile_image})`;
+                        const mobAvatar = document.getElementById('mobile-user-avatar');
+                        if (mobAvatar) {
+                            mobAvatar.innerText = '';
+                            mobAvatar.style.backgroundImage = `url(${myProfile.profile_image})`;
+                        }
+                        const pageMobAvatar = document.getElementById('page-mobile-user-avatar');
+                        if (pageMobAvatar) {
+                            pageMobAvatar.innerText = '';
+                            pageMobAvatar.style.backgroundImage = `url(${myProfile.profile_image})`;
+                        }
+                        const dashMobAvatar = document.getElementById('dashboard-mobile-avatar');
+                        if (dashMobAvatar) {
+                            dashMobAvatar.innerText = '';
+                            dashMobAvatar.style.backgroundImage = `url(${myProfile.profile_image})`;
+                        }
                     } else {
                         sidebarInit.innerText = (myProfile.full_name || 'U').charAt(0).toUpperCase();
                         sidebarInit.style.backgroundImage = 'none';
+                        const mobAvatar = document.getElementById('mobile-user-avatar');
+                        if (mobAvatar) {
+                            mobAvatar.innerText = (myProfile.full_name || 'U').charAt(0).toUpperCase();
+                            mobAvatar.style.backgroundImage = 'none';
+                        }
+                        const pageMobAvatar = document.getElementById('page-mobile-user-avatar');
+                        if (pageMobAvatar) {
+                            pageMobAvatar.innerText = (myProfile.full_name || 'U').charAt(0).toUpperCase();
+                            pageMobAvatar.style.backgroundImage = 'none';
+                        }
+                        const dashMobAvatar = document.getElementById('dashboard-mobile-avatar');
+                        if (dashMobAvatar) {
+                            dashMobAvatar.innerText = (myProfile.full_name || 'U').charAt(0).toUpperCase();
+                            dashMobAvatar.style.backgroundImage = 'none';
+                        }
                     }
                     
                     // Show Google Sync Modal if tokens are missing
@@ -1768,6 +1982,9 @@
                                         document.getElementById('sidebar').classList.remove('md:flex');
                                         document.getElementById('mainContent').classList.add('hidden');
                                         
+                                        const mobileNav = document.getElementById('mobile-nav');
+                                        if(mobileNav) mobileNav.classList.add('hidden');
+
                                         // Close all potential modals securely
                                         document.querySelectorAll('.fixed').forEach(modal => {
                                             if(modal.id !== 'page-login' && !modal.id.includes('toast')) {
@@ -1802,14 +2019,22 @@
                     if (payload.new.account_level !== currentUserProfile.account_level) {
                         currentUserProfile.account_level = payload.new.account_level;
                         const opBtn = document.getElementById('operator-panel-btn');
+                        const mobOpBtn = document.getElementById('mobile-operator-panel-btn');
+                        const pageMobOpBtn = document.getElementById('page-mobile-operator-panel-btn');
                         const teamViewNav = document.getElementById('nav-teamview');
-                        
+                        const mobileTeamViewNav = document.getElementById('mobile-nav-teamview');
                         if (currentUserProfile.account_level === 'Operator') {
                             if(opBtn) { opBtn.classList.remove('hidden'); opBtn.classList.add('flex'); }
+                            if(mobOpBtn) { mobOpBtn.classList.remove('hidden'); mobOpBtn.classList.add('flex'); }
+                            if(pageMobOpBtn) { pageMobOpBtn.classList.remove('hidden'); pageMobOpBtn.classList.add('flex'); }
                             if(teamViewNav) { teamViewNav.classList.remove('hidden'); teamViewNav.classList.add('flex'); }
+                            if(mobileTeamViewNav) { mobileTeamViewNav.classList.remove('hidden'); mobileTeamViewNav.classList.add('flex'); }
                         } else {
                             if(opBtn) { opBtn.classList.add('hidden'); opBtn.classList.remove('flex'); }
+                            if(mobOpBtn) { mobOpBtn.classList.add('hidden'); mobOpBtn.classList.remove('flex'); }
+                            if(pageMobOpBtn) { pageMobOpBtn.classList.add('hidden'); pageMobOpBtn.classList.remove('flex'); }
                             if(teamViewNav) { teamViewNav.classList.add('hidden'); teamViewNav.classList.remove('flex'); }
+                            if(mobileTeamViewNav) { mobileTeamViewNav.classList.add('hidden'); mobileTeamViewNav.classList.remove('flex'); }
                             
                             // Security: Close control panel if they are currently looking at it
                             const cpModal = document.getElementById('control-panel-modal');
@@ -1938,11 +2163,13 @@
                     supabaseClient.auth.signOut().then(() => {
                         authUserId = null;
                         currentUserProfile = null;
-                        
                         document.getElementById('sidebar').classList.add('hidden');
                         document.getElementById('sidebar').classList.remove('md:flex');
                         document.getElementById('mainContent').classList.add('hidden');
                         
+                        const mobileNav2 = document.getElementById('mobile-nav');
+                        if(mobileNav2) mobileNav2.classList.add('hidden');
+
                         document.querySelectorAll('.fixed').forEach(modal => {
                             if(modal.id !== 'page-login' && !modal.id.includes('toast')) {
                                 modal.classList.add('hidden');
@@ -2036,10 +2263,8 @@
                 
                 // RBAC SECURITY: Check if user has been inactivated or removed securely via RPC
             const { data: accessData } = await supabaseClient.rpc('check_access_status', { lookup_email: session.user.email });
-            
             if (!accessData || accessData.length === 0 || accessData[0].status !== 'Active') {
                 await supabaseClient.auth.signOut();
-                
                 // Show login screen correctly
                 document.getElementById('sidebar').classList.add('hidden');
                 document.getElementById('sidebar').classList.remove('md:flex');
@@ -2058,8 +2283,11 @@
                 // UNLOCK OPERATOR UI
                 if (currentUserProfile.account_level === 'Operator') {
                     const opBtn = document.getElementById('operator-panel-btn');
-                    opBtn.classList.remove('hidden');
-                    opBtn.classList.add('flex');
+                    if(opBtn) { opBtn.classList.remove('hidden'); opBtn.classList.add('flex'); }
+                    const mobOpBtn = document.getElementById('mobile-operator-panel-btn');
+                    if(mobOpBtn) { mobOpBtn.classList.remove('hidden'); mobOpBtn.classList.add('flex'); }
+                    const pageMobOpBtn = document.getElementById('page-mobile-operator-panel-btn');
+                    if(pageMobOpBtn) { pageMobOpBtn.classList.remove('hidden'); pageMobOpBtn.classList.add('flex'); }
                 }
 
                 completeLogin();
@@ -2091,7 +2319,7 @@
                     const minStr = m === 0 ? '00' : '30';
                     const label = `${String(hr12).padStart(2, '0')}:${minStr} ${ampm}`;
                     const val24 = `${String(h).padStart(2, '0')}:${minStr}`;
-                    opts += `<div onclick="selectTime(this, '${val24}', '${label}', event)" class="px-3 py-2.5 text-[10px] text-white font-light hover:bg-white/10 rounded-lg cursor-pointer transition-colors">${label}</div>`;
+                    opts += `<div onclick="selectTime(this, '${val24}', '${label}', event)" class="px-3 py-2.5 text-[10px] text-white font-light hover:bg-white/10 active:bg-white/30 active:text-white md:active:bg-white/10 rounded-lg cursor-pointer transition-colors">${label}</div>`;
                 }
             }
             return opts;
@@ -2110,15 +2338,19 @@
                 return `${String(hr12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
             };
             return `
-                <div class="flex items-center space-x-3 time-slot pointer-events-auto mt-3 w-full justify-end" style="padding-right: 0px;">
+                <div class="flex items-center space-x-2 md:space-x-3 time-slot pointer-events-auto mt-1.5 md:mt-3 w-full justify-end" style="padding-right: 0px;">
                     <div class="relative inline-block time-picker-wrap">
                         <div onclick="toggleTimeDropdown(this, event)" class="bg-black border border-white/10 rounded-xl px-4 py-2 text-xs text-white cursor-pointer hover:border-white/30 transition-all w-32 flex justify-between items-center" data-val="${startVal24}">
                             <span class="time-selected-text pointer-events-none">${format12(startVal24)}</span>
                             <i data-lucide="chevron-down" class="w-3 h-3 text-white/40 pointer-events-none"></i>
                         </div>
-                        <div class="hidden absolute top-full right-0 mt-2 w-40 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl z-[5000] max-h-48 overflow-y-auto custom-scrollbar p-1 time-dropdown-menu">
+                        <div class="hidden absolute top-full right-0 mt-2 w-40 p-2 md:p-0 bg-black/5 backdrop-blur-md md:bg-[#0f0f0f] md:backdrop-blur-none border border-white/10 md:border-white/10 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] md:shadow-2xl z-[5000] time-dropdown-menu">
+                        <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: radial-gradient(130% 65% at top, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.0) 85%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: 10;"></div>
+                        <div class="absolute bottom-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent rounded-full md:hidden pointer-events-none z-10"></div>
+                        <div class="relative z-20 max-h-48 overflow-y-auto custom-scrollbar pr-1 md:p-1 w-full rounded-xl">
                             ${timeOptionsHTML}
                         </div>
+                    </div>
                     </div>
                     <span class="text-white/20 font-light">—</span>
                     <div class="relative inline-block time-picker-wrap">
@@ -2126,9 +2358,14 @@
                             <span class="time-selected-text pointer-events-none">${format12(endVal24)}</span>
                             <i data-lucide="chevron-down" class="w-3 h-3 text-white/40 pointer-events-none"></i>
                         </div>
-                        <div class="hidden absolute top-full right-0 mt-2 w-40 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl z-[5000] max-h-48 overflow-y-auto custom-scrollbar p-1 time-dropdown-menu">
+                        
+                    <div class="hidden absolute top-full right-0 mt-2 w-40 p-2 md:p-0 bg-black/5 backdrop-blur-md md:bg-[#0f0f0f] md:backdrop-blur-none border border-white/10 md:border-white/10 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] md:shadow-2xl z-[5000] time-dropdown-menu">
+                        <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: radial-gradient(130% 65% at top, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.0) 85%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: 10;"></div>
+                        <div class="absolute bottom-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent rounded-full md:hidden pointer-events-none z-10"></div>
+                        <div class="relative z-20 max-h-48 overflow-y-auto custom-scrollbar pr-1 md:p-1 w-full rounded-xl">
                             ${timeOptionsHTML}
                         </div>
+                    </div>
                     </div>
                     <div class="flex items-center justify-center shrink-0 w-7" style="margin-left: 12px; margin-right: -12px;">
                         <button onclick="addTimeSlot(this, event)" class="add-slot-btn p-1.5 hover:bg-white/10 rounded-full text-white transition-colors flex items-center justify-center w-7 h-7 shrink-0"><i data-lucide="plus" class="w-4 h-4"></i></button>
@@ -2140,6 +2377,12 @@
 
         function toggleTimeDropdown(el, event) {
             event.stopPropagation();
+            
+            // Fix stacking context so dropdown appears over other cards
+            document.querySelectorAll('.day-row').forEach(row => row.style.zIndex = '');
+            const parentRow = el.closest('.day-row');
+            if (parentRow) parentRow.style.zIndex = '50';
+
             document.querySelectorAll('.time-dropdown-menu').forEach(m => {
                 if (m !== el.nextElementSibling) m.classList.add('hidden');
             });
@@ -2153,11 +2396,17 @@
             displayBtn.setAttribute('data-val', val24);
             displayBtn.querySelector('.time-selected-text').innerText = label;
             wrap.querySelector('.time-dropdown-menu').classList.add('hidden');
+            
+            // Reset stacking context
+            const parentRow = el.closest('.day-row');
+            if (parentRow) parentRow.style.zIndex = '';
+            
             showSaveBtn();
         }
 
         document.addEventListener('click', () => {
             document.querySelectorAll('.time-dropdown-menu').forEach(m => m.classList.add('hidden'));
+            document.querySelectorAll('.day-row').forEach(row => row.style.zIndex = '');
         });
 
         function addTimeSlot(btn, event) {
@@ -2198,16 +2447,16 @@
             
             daysArr.forEach(dayName => {
                 const row = document.createElement('div');
-                row.className = "day-row p-5 bg-black border border-white/10 rounded-xl flex items-start justify-between transition-all cursor-pointer";
+                row.className = "relative day-row p-3.5 md:p-5 bg-white/[0.02] md:bg-black border border-transparent md:border-white/10 rounded-2xl md:rounded-xl flex flex-col md:flex-row items-start justify-between transition-all cursor-pointer z-0";
                 row.setAttribute('data-day', dayName);
                 row.onclick = (e) => toggleDayFromCard(e, row);
-                
                 row.innerHTML = `
-                    <div class="flex items-center space-x-6 w-1/3 mt-3 pointer-events-none">
-                        <input type="checkbox" class="custom-checkbox day-toggle pointer-events-none">
-                        <span class="text-xs font-bold uppercase tracking-widest min-w-[100px]">${dayName.charAt(0).toUpperCase() + dayName.slice(1)}</span>
+                    <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
+                    <div class="flex items-center space-x-4 md:space-x-6 w-full md:w-1/3 mt-0.5 md:mt-3 pointer-events-none mb-2 md:mb-0">
+                        <input type="checkbox" class="custom-checkbox day-toggle pointer-events-none hidden md:block">
+                        <span class="text-[15px] md:text-xs font-bold uppercase tracking-widest min-w-[100px]">${dayName.charAt(0).toUpperCase() + dayName.slice(1)}</span>
                     </div>
-                    <div class="flex flex-col space-y-2 flex-1 items-end time-controls-container pb-1 pointer-events-auto w-full"></div>
+                    <div class="flex flex-col space-y-2 flex-1 items-end time-controls-container pb-0 md:pb-1 pointer-events-auto w-full -mt-2 md:mt-0"></div>
                 `;
                 container.appendChild(row);
 
@@ -2291,7 +2540,7 @@
                 timeControls.classList.add('hidden');
                 if (!unavailableText) {
                     unavailableText = document.createElement('div');
-                    unavailableText.className = "flex-1 unavailable-text text-[10px] text-white/40 uppercase tracking-[0.2em] text-right mt-3 pointer-events-none";
+                    unavailableText.className = "flex-1 unavailable-text text-[10px] text-white/40 uppercase tracking-[0.2em] text-right mt-1 md:mt-3 pointer-events-none";
                     unavailableText.innerText = "Closed / Unavailable";
                     row.appendChild(unavailableText);
                 } else unavailableText.classList.remove('hidden');
@@ -2319,11 +2568,12 @@
 
             others.forEach(m => {
                 const card = document.createElement('div');
-                card.className = "p-6 bg-white/[0.03] border border-white/10 rounded-xl hover:bg-white/[0.06] hover:border-white/30 cursor-pointer transition-all group text-center";
+                card.className = "relative p-4 md:p-6 bg-white/[0.03] border border-transparent md:border-white/10 rounded-xl hover:bg-white/[0.06] hover:border-white/30 cursor-pointer transition-all group text-center z-0 overflow-hidden md:overflow-visible";
                 card.innerHTML = `
-                    <div class="w-16 h-16 rounded-full bg-white text-black font-black text-lg flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform overflow-hidden bg-cover bg-center" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
-                    <h4 class="text-sm font-bold capitalize tracking-tight mb-1">${safeText(m.name)}</h4>
-                    <p class="text-[9px] text-white/40 capitalize tracking-widest">${safeText(m.role)}</p>
+                    <div class="absolute inset-0 rounded-xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
+                    <div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white text-black font-black text-lg flex items-center justify-center mx-auto mb-3 md:mb-4 group-hover:scale-105 transition-transform overflow-hidden bg-cover bg-center" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
+                    <h4 class="text-xs md:text-sm font-bold capitalize tracking-tight mb-1">${safeText(m.name)}</h4>
+                    <p class="text-[8px] md:text-[9px] text-white/40 capitalize tracking-widest">${safeText(m.role)}</p>
                 `;
                 card.onclick = () => openBooking(m);
                 container.appendChild(card);
@@ -2388,6 +2638,14 @@
             const container = document.getElementById('guest-gallery');
             container.innerHTML = '';
             modal.classList.remove('hidden');
+            
+            if (window.innerWidth < 768) {
+                const innerModal = modal.querySelector('.max-w-md');
+                if (innerModal) {
+                    innerModal.classList.remove('mobile-animate-out');
+                    innerModal.classList.add('mobile-animate-in');
+                }
+            }
 
             // Filter out people already in the meeting AND the logged-in user
             const participantIds = currentBookingParticipants.map(p => p.id);
@@ -2413,7 +2671,17 @@
         }
 
         function closeGuestModal() {
-            document.getElementById('add-guest-modal').classList.add('hidden');
+            const modal = document.getElementById('add-guest-modal');
+            if (window.innerWidth < 768) {
+                const innerModal = modal.querySelector('.max-w-md');
+                if (innerModal) {
+                    innerModal.classList.remove('mobile-animate-in');
+                    innerModal.classList.add('mobile-animate-out');
+                    setTimeout(() => modal.classList.add('hidden'), 200);
+                    return;
+                }
+            }
+            modal.classList.add('hidden');
         }
         function closeBooking() {
             document.getElementById('team-gallery').classList.remove('hidden');
@@ -2826,8 +3094,24 @@ if (hasRealConflict) {
         // TEAM VIEW LOGIC
         function toggleFilterModal() {
             const modal = document.getElementById('filter-modal');
-            modal.classList.toggle('hidden');
-            if (!modal.classList.contains('hidden')) renderFilterList();
+            const innerModal = modal.querySelector('.absolute.top-24');
+            
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                if (window.innerWidth < 768 && innerModal) {
+                    innerModal.classList.remove('mobile-animate-out');
+                    innerModal.classList.add('mobile-animate-in');
+                }
+                renderFilterList();
+            } else {
+                if (window.innerWidth < 768 && innerModal) {
+                    innerModal.classList.remove('mobile-animate-in');
+                    innerModal.classList.add('mobile-animate-out');
+                    setTimeout(() => modal.classList.add('hidden'), 200);
+                } else {
+                    modal.classList.add('hidden');
+                }
+            }
             lucide.createIcons();
         }
 
@@ -2967,19 +3251,24 @@ if (hasRealConflict) {
                 const cell = document.createElement('div');
                 cell.className = `team-day-cell bg-black border-[0.5px] border-white/10 group cursor-pointer transition-all ${isPast ? 'opacity-50' : ''} hover:border-white/30`;
                 
-                // Call Cards rendering
-                const callCardsHTML = dayCalls.map(c => {
-                    return `<div class="bg-black border border-white/20 rounded-md p-1.5 mb-1 flex items-center gap-1.5 overflow-hidden w-full">
-                                <div class="w-1.5 h-1.5 rounded-full bg-white shrink-0"></div>
-                                 <span class="text-[9px] text-white whitespace-nowrap overflow-hidden text-ellipsis capitalize">${safeText(c.title) || 'Meeting'}</span>
-                            </div>`;
-                }).join('');
+                // Call Cards rendering (Unified dots for Mobile & Desktop)
+                const maxDots = 15;
+                const displayCalls = dayCalls.slice(0, maxDots);
+                const hasMore = dayCalls.length > maxDots;
+
+                const dotsHTML = dayCalls.length > 0 ? `
+                    <div class="flex flex-wrap gap-1 mt-0.5 overflow-hidden h-[30px] md:h-[40px] relative">
+                        ${displayCalls.map(() => `<div class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-white shrink-0"></div>`).join('')}
+                        ${hasMore ? `<div class="text-[8px] text-white/50 leading-none self-end ml-1 mb-0.5 font-bold">+${dayCalls.length - maxDots}</div>` : ''}
+                        <div class="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+                    </div>
+                ` : '';
 
                 cell.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-bold ${isPast ? 'text-white/40' : 'text-white'}">${i}</span>
+                    <div class="flex justify-between items-start mb-1 md:mb-2">
+                        <span class="text-[10px] md:text-xs font-bold ${isPast ? 'text-white/40' : 'text-white'}">${i}</span>
                     </div>
-                    <div class="flex flex-col">${callCardsHTML}</div>
+                    <div class="flex flex-col">${dotsHTML}</div>
                 `;
                 cell.onclick = () => {
                     document.querySelectorAll('.team-day-cell').forEach(el => {
@@ -3008,7 +3297,25 @@ if (hasRealConflict) {
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             document.getElementById('side-date-title').innerText = `${monthNames[month]} ${day}, ${year}`;
             sidelist.classList.remove('hidden');
-            setTimeout(() => { sidelist.style.width = "400px"; sidelist.style.opacity = "1"; }, 10);
+            
+            if (window.innerWidth < 768) {
+                sidelist.style.transition = 'none';
+                sidelist.classList.add('fixed', 'inset-0', 'z-[6000]', 'w-full', 'translate-x-full');
+                sidelist.classList.remove('w-0', 'translate-x-0');
+                sidelist.style.opacity = "1";
+                void sidelist.offsetWidth;
+                sidelist.style.transition = '';
+            } else {
+                sidelist.style.width = "400px";
+            }
+            setTimeout(() => { 
+                if (window.innerWidth < 768) {
+                    sidelist.classList.remove('translate-x-full');
+                    sidelist.classList.add('translate-x-0');
+                } else {
+                    sidelist.style.opacity = "1"; 
+                }
+            }, 10);
             
             const liveWrapper = document.getElementById('live-calls-wrapper');
             const upcomingWrapper = document.getElementById('upcoming-calls-wrapper');
@@ -3039,7 +3346,8 @@ if (hasRealConflict) {
                 const participantCountText = c.type === 'lead' ? c.meeting_participants.length + 1 : c.meeting_participants.length;
                 
                 const cardHTML = `
-                    <div class="bg-black border border-white/20 rounded-xl p-3 mb-3">
+                    <div class="relative bg-white/[0.02] md:bg-black border border-transparent md:border-white/20 rounded-xl p-4 md:p-3 mb-3 z-0 overflow-hidden md:overflow-visible">
+                        <div class="absolute inset-0 rounded-xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
                         <div class="flex flex-col items-start mb-0 w-full">
                             <div class="flex items-center gap-2 mb-0.5 w-full">
                                 <h4 class="text-sm font-semibold text-white capitalize tracking-tight truncate">${safeText(c.title) || 'Meeting'}</h4>
@@ -3086,8 +3394,23 @@ if (hasRealConflict) {
         function closeCallList() {
             window.currentSidelistDate = null;
             const sidelist = document.getElementById('call-sidelist');
-            sidelist.style.width = "0"; sidelist.style.opacity = "0";
-            setTimeout(() => sidelist.classList.add('hidden'), 400);
+            
+            if (window.innerWidth < 768) {
+                sidelist.classList.remove('translate-x-0');
+                sidelist.classList.add('translate-x-full');
+                setTimeout(() => {
+                    sidelist.style.transition = 'none';
+                    sidelist.classList.add('hidden', 'w-0', 'translate-x-full');
+                    sidelist.classList.remove('fixed', 'inset-0', 'z-[6000]', 'w-full', 'translate-x-0');
+                    sidelist.style.opacity = "0";
+                    void sidelist.offsetWidth;
+                    sidelist.style.transition = '';
+                }, 500);
+            } else {
+                sidelist.style.opacity = "0";
+                sidelist.style.width = "0";
+                setTimeout(() => sidelist.classList.add('hidden'), 500);
+            }
         }
 
         function switchTab(tab) {
@@ -3167,36 +3490,43 @@ function renderDashboard() {
             if(upcomings.length === 0) upcomingContainer.innerHTML = '<p class="text-center py-10 text-[10px] text-white/20 uppercase tracking-widest">No upcoming sessions</p>';
             else upcomingContainer.innerHTML = upcomings.map(s => {
                 const jsonStr = encodeURIComponent(JSON.stringify(s.fullRecord));
-                let borderClass = 'border-white/5';
-                if (s.isLive || s.under24h) borderClass = 'border-white/20';
+                let borderClass = 'border-transparent md:border-white/5';
+            if (s.isLive || s.under24h) borderClass = 'border-transparent md:border-white/20';
 
- return `
-                <div class="relative p-4 bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex items-center justify-between">
-                        ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
-                        <div class="flex items-center space-x-4 w-[35%]">
-                            <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border-white/20 border flex flex-col shrink-0 items-center justify-center font-black relative">
-                                <span class="text-[8px] uppercase leading-none mt-0.5">${s.month}</span>
-                                <span class="text-sm leading-none">${s.date}</span>
+             return `
+                <div onclick="if(window.innerWidth < 768) openDetailsModal('${s.id}')" class="relative p-3.5 md:p-4 bg-white/[0.02] md:bg-white/5 rounded-2xl border ${borderClass} hover:bg-white/[0.08] transition-all group flex flex-wrap md:flex-nowrap items-center justify-between gap-2 md:gap-0 cursor-pointer md:cursor-auto z-0 overflow-hidden md:overflow-visible">
+                        <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
+                        ${s.isHost && s.allDeclined && s.type !== 'lead' ? `<button onclick="event.stopPropagation(); deleteMeeting('${s.id}', true)" class="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white z-10"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}
+                        <div class="flex items-center gap-3 md:space-x-4 w-[75%] md:w-[35%]">
+                            <div class="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-[#111] md:bg-zinc-800 text-white border border-white/10 md:border-white/20 flex flex-col shrink-0 items-center justify-center font-black relative shadow-sm">
+                                <span class="text-[8px] md:text-[8px] uppercase leading-none mt-0.5">${s.month}</span>
+                                <span class="text-sm md:text-sm leading-none">${s.date}</span>
                             </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2 mb-0.5">
-                                    <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${s.title}</h4>
-                                    ${s.allDeclined ? '<span class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Declined</span>' : ''}
-                                    ${s.isLive && !s.allDeclined ? '<div class="flex items-center space-x-1.5 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
-                                    ${s.type === 'lead' ? '<div class="flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
-                                    ${s.hasPending && !s.allDeclined ? '<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0"><span class="text-[8px] font-bold uppercase text-white/30 tracking-widest whitespace-nowrap">Pending Response</span></div>' : ''}
+                            <div class="flex flex-col justify-center min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 mb-0.5 flex-nowrap overflow-hidden pr-2">
+                                    <h4 class="font-medium text-xs md:text-sm text-white capitalize tracking-wide block truncate w-full max-w-[140px] md:max-w-none">
+                                        <span class="md:hidden">${s.title.length > (!s.allDeclined && (s.isLive || s.hasPending) ? 22 : 34) ? s.title.substring(0, !s.allDeclined && (s.isLive || s.hasPending) ? 22 : 34) + '...' : s.title}</span>
+                                        <span class="hidden md:inline">${s.title.length > 34 ? s.title.substring(0, 34) + '...' : s.title}</span>
+                                    </h4>
+                                    ${s.allDeclined ? '<span class="text-[7px] md:text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Declined</span>' : ''}
+                                    ${s.isLive && !s.allDeclined ? '<div class="flex items-center space-x-1 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded shrink-0"><div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div><span class="text-[7px] md:text-[8px] font-bold capitalize text-red-500 tracking-widest whitespace-nowrap">Live</span></div>' : ''}
+                                    ${s.type === 'lead' ? '<div class="hidden md:flex items-center space-x-1 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded shrink-0"><span class="text-[7px] md:text-[8px] font-bold capitalize text-blue-500 tracking-widest whitespace-nowrap">Lead</span></div>' : ''}
+                                    ${s.hasPending && !s.allDeclined ? '<div class="flex items-center space-x-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0"><span class="text-[7px] md:text-[8px] font-bold uppercase text-white/30 tracking-widest whitespace-nowrap">Pending</span></div>' : ''}
                                 </div>
-                            <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${s.time}</p>
-                            <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${s.host}</p>
+                                <div class="flex items-center justify-between w-full pr-1 md:pr-0">
+                                    <p class="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest font-medium leading-tight shrink-0">${s.time}</p>
+                                    <div class="countdown-timer md:hidden text-[7.5px] text-white font-light tracking-wide capitalize text-right pl-2 truncate" data-start="${s.startUTC}"></div>
+                                </div>
+                                <p class="text-[8px] md:text-[10px] text-white/60 font-light tracking-wide leading-tight truncate mt-0.5">Host: ${s.host}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex-1 flex justify-center px-2">
+                    <div class="hidden md:flex flex-1 justify-center px-2">
                          <div class="countdown-timer text-[11px] text-white font tracking-wide capitalize text-center" data-start="${s.startUTC}"></div>
                     </div>
-                    <div class="flex items-center justify-end gap-2 w-[30%] pr-4 shrink-0">
+                    <div class="flex items-center justify-end gap-2 w-[20%] md:w-[30%] md:pr-4 shrink-0">
                         ${(!s.allDeclined && s.isWithin15Mins && s.fullRecord.google_meet_link) ?
-`<button onclick="window.open('${s.fullRecord.google_meet_link}', '_blank')" class="bg-white text-black border border-white text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Join</button>` : ''}
-                        <button onclick="openDetailsModal('${s.id}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+`<button onclick="event.stopPropagation(); window.open('${s.fullRecord.google_meet_link}', '_blank')" class="bg-white text-black border border-white text-[8px] px-3.5 md:px-2.5 py-1 md:py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors w-14 md:w-auto text-center flex justify-center items-center">Join</button>` : ''}
+                        <button onclick="event.stopPropagation(); openDetailsModal('${s.id}')" class="hidden md:block bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
                     </div>
                 </div>`;
             }).join('');
@@ -3213,37 +3543,38 @@ function renderDashboard() {
                 const isOccupied = acceptedIntervals.some(interval => rStart < interval.end && rEnd > interval.start);
 
                 return `
-                <div class="relative flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/[0.08] transition-all group">
-                    <div class="flex items-center space-x-4 w-[35%]">
-       
-                 <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white border border-white/20 flex flex-col shrink-0 items-center justify-center font-black">
-                            <span class="text-[8px] uppercase leading-none mt-0.5">${r.month}</span>
-                            <span class="text-sm leading-none">${r.date}</span>
-        
+                <div onclick="if(window.innerWidth < 768) openDetailsModal('${r.id}')" class="relative flex flex-wrap md:flex-nowrap items-center justify-between p-3.5 md:p-4 bg-white/[0.02] md:bg-white/5 rounded-2xl border border-transparent md:border-white/5 hover:bg-white/[0.08] transition-all group gap-2 md:gap-0 cursor-pointer md:cursor-auto z-0 overflow-hidden md:overflow-visible">
+                    <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
+                    <div class="flex items-center gap-3 md:space-x-4 w-[65%] md:w-[35%]">
+                        <div class="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-[#111] md:bg-zinc-800 text-white border border-white/10 md:border-white/20 flex flex-col shrink-0 items-center justify-center font-black shadow-sm">
+                            <span class="text-[8px] md:text-[8px] uppercase leading-none mt-0.5">${r.month}</span>
+                            <span class="text-sm md:text-sm leading-none">${r.date}</span>
                         </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <h4 class="font-medium text-sm text-white capitalize tracking-tight truncate">${r.title}</h4>
-                                ${isOccupied ? '<span class="text-[8px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">You Are Already Occupied</span>' : ''}
+                        <div class="flex flex-col justify-center min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5 mb-0.5 flex-nowrap overflow-hidden pr-2">
+                                <h4 class="font-medium text-xs md:text-sm text-white capitalize tracking-wide block truncate w-full max-w-[140px] md:max-w-none">${r.title.length > 34 ? r.title.substring(0, 34) + '...' : r.title}</h4>
+                                ${isOccupied ? '<span class="text-[7px] md:text-[8px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap shrink-0">Occupied</span>' : ''}
                             </div>
-                         
-                            <p class="text-[10px] text-white/40 uppercase tracking-widest font-medium">${r.time}</p>
-                            <p class="text-[10px] text-white/60 font-light tracking-wide mt-0.5 truncate">Host: ${r.host}</p>
+                            <div class="flex items-center justify-between w-full pr-1 md:pr-0">
+                                <p class="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest font-medium leading-tight shrink-0">${r.time}</p>
+                                <div class="countdown-timer md:hidden text-[7.5px] text-white font-light tracking-wide capitalize text-right pl-2 truncate" data-start="${r.startUTC}"></div>
+                            </div>
+                            <p class="text-[8px] md:text-[10px] text-white/60 font-light tracking-wide leading-tight truncate mt-0.5">Host: ${r.host}</p>
                         </div>
                     </div>
             
-                    <div class="flex-1 flex justify-center px-2">
+                    <div class="hidden md:flex flex-1 justify-center px-2">
                         <div class="countdown-timer text-[11px] text-white font tracking-wide capitalize text-center" data-start="${r.startUTC}"></div>
                     </div>
-                    <div class="flex flex-col items-end gap-1.5 w-[30%] shrink-0 pr-2">
+                    <div class="flex flex-col items-end gap-1.5 w-[32%] shrink-0 pr-2">
         
                         <div class="flex gap-2 w-full max-w-[120px]">
                             ${isOccupied ? 
-                            `<button disabled class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest opacity-30 cursor-not-allowed">Accept</button>` : 
-                            `<button onclick="handleRequest('${r.id}', 'accepted')" class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Accept</button>`}
-                            <button onclick="handleRequest('${r.id}', 'declined')" class="flex-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 hover:text-white text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest transition-colors">Decline</button>
+                            `<button disabled onclick="event.stopPropagation()" class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest opacity-30 cursor-not-allowed">Accept</button>` : 
+                            `<button onclick="event.stopPropagation(); handleRequest('${r.id}', 'accepted')" class="flex-1 bg-white text-black text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest hover:bg-zinc-200 transition-colors">Accept</button>`}
+                            <button onclick="event.stopPropagation(); handleRequest('${r.id}', 'declined')" class="flex-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 hover:text-white text-[8px] px-2.5 py-1 rounded font-semibold capitalize tracking-widest transition-colors">Decline</button>
                         </div>
-                        <button onclick="openDetailsModal('${r.id}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors w-full max-w-[120px]">Details</button>
+                        <button onclick="event.stopPropagation(); openDetailsModal('${r.id}')" class="hidden md:block bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors w-full max-w-[120px]">Details</button>
                     </div>
         
                 </div>`;
@@ -3254,21 +3585,19 @@ function renderDashboard() {
             else pastContainer.innerHTML = pasts.map(p => {
                 const jsonStr = encodeURIComponent(JSON.stringify(p.fullRecord));
                 return `
-                <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 opacity-40 grayscale transition-all hover:opacity-100 hover:grayscale-0 group">
-                    <div class="flex items-center space-x-4">
-      
-                  <div class="w-11 h-11 rounded-lg bg-zinc-800 text-white/40 border border-white/40 flex flex-col shrink-0 items-center justify-center font-black">
-                            <span class="text-[8px] uppercase leading-none mt-0.5">${p.month}</span>
-                            <span class="text-sm leading-none">${p.date}</span>
-       
+                <div onclick="if(window.innerWidth < 768) openDetailsModal('${p.id}')" class="relative flex items-center justify-between p-3.5 md:p-4 bg-white/[0.02] md:bg-white/5 rounded-2xl border border-transparent md:border-white/5 opacity-40 grayscale transition-all hover:opacity-100 hover:grayscale-0 group gap-2 cursor-pointer md:cursor-auto z-0 overflow-hidden md:overflow-visible">
+                    <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
+                    <div class="flex items-center gap-3 md:space-x-4 w-[90%] md:w-auto overflow-hidden">
+                        <div class="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-[#111] md:bg-zinc-800 text-white/40 border border-white/10 md:border-white/40 flex flex-col shrink-0 items-center justify-center font-black shadow-sm">
+                            <span class="text-[8px] md:text-[8px] uppercase leading-none mt-0.5">${p.month}</span>
+                            <span class="text-sm md:text-sm leading-none">${p.date}</span>
                         </div>
-                        <div>
-                            <h4 class="font-medium text-sm text-white/40 capitalize tracking-tight group-hover:text-white">${p.title}</h4>
-                         
-                            <p class="text-[10px] text-white/20 uppercase tracking-widest font-medium group-hover:text-white/40">${p.time}</p>
+                        <div class="flex flex-col justify-center min-w-0 flex-1 pr-2">
+                            <h4 class="font-medium text-xs md:text-sm text-white/40 capitalize tracking-wide group-hover:text-white block truncate w-full max-w-[140px] md:max-w-none">${p.title.length > 34 ? p.title.substring(0, 34) + '...' : p.title}</h4>
+                            <p class="text-[8px] md:text-[10px] text-white/20 uppercase tracking-widest font-medium leading-tight group-hover:text-white/40 mt-0.5">${p.time}</p>
                         </div>
                     </div>
-                    <button onclick="openDetailsModal('${p.id}')" class="bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
+                    <button onclick="event.stopPropagation(); openDetailsModal('${p.id}')" class="hidden md:block bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
             
                 </div>`;
             }).join('');
@@ -3394,6 +3723,13 @@ function renderDashboard() {
             }).join('') + leadHTML;
             
             modal.classList.remove('hidden');
+            if (window.innerWidth < 768) {
+                const innerModal = modal.querySelector('.max-w-lg');
+                if (innerModal) {
+                    innerModal.classList.remove('mobile-animate-out');
+                    innerModal.classList.add('mobile-animate-in');
+                }
+            }
             lucide.createIcons();
         }
 
@@ -3492,7 +3828,21 @@ function renderDashboard() {
         }
 
         function closeDetailsModal() { 
-            document.getElementById('callDetailsModal').classList.add('hidden');
+            const modal = document.getElementById('callDetailsModal');
+            if (window.innerWidth < 768) {
+                const innerModal = modal.querySelector('.max-w-lg');
+                if (innerModal) {
+                    innerModal.classList.remove('mobile-animate-in');
+                    innerModal.classList.add('mobile-animate-out');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        hideDeleteConfirm();
+                        toggleEditMode(false);
+                    }, 200);
+                    return;
+                }
+            }
+            modal.classList.add('hidden');
             hideDeleteConfirm();
             toggleEditMode(false);
         }
@@ -3524,7 +3874,7 @@ async function deleteMeeting(id, skipWebhook = false) {
                 if (diffMs > 0 && diffMs <= 24 * 60 * 60 * 1000) {
                     const hrs = Math.floor(diffMs / (1000 * 60 * 60));
                     const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                    el.innerText = `Starting In ${hrs} hours and ${mins} minutes`;
+                    el.innerText = `In ${hrs} hours and ${mins} minutes`;
                 } else {
                     el.innerText = '';
                 }
@@ -3610,9 +3960,13 @@ async function deleteMeeting(id, skipWebhook = false) {
         let cropperInstance = null;
         function openProfileModal() {
             const ov = document.getElementById('modal-overlay');
+            const inner = document.getElementById('modal-container');
             ov.classList.remove('hidden');
             ov.classList.add('flex');
-            setTimeout(() => ov.classList.replace('opacity-0', 'opacity-100'), 10);
+            setTimeout(() => {
+                ov.classList.replace('opacity-0', 'opacity-100');
+                if(window.innerWidth < 768 && inner) inner.classList.remove('translate-x-full');
+            }, 10);
             
             // Update inputs
             document.getElementById('modal-display-name').innerText = currentUserProfile.full_name || '';
@@ -3638,7 +3992,9 @@ async function deleteMeeting(id, skipWebhook = false) {
 
         function closeProfileModal() {
             const ov = document.getElementById('modal-overlay');
+            const inner = document.getElementById('modal-container');
             ov.classList.replace('opacity-100', 'opacity-0');
+            if(window.innerWidth < 768 && inner) inner.classList.add('translate-x-full');
             setTimeout(() => {
                 ov.classList.add('hidden');
                 ov.classList.remove('flex');
@@ -4026,16 +4382,22 @@ async function deleteMeeting(id, skipWebhook = false) {
         // --- OPERATOR CONTROL PANEL LOGIC ---
         function openControlPanel() {
             const modal = document.getElementById('control-panel-modal');
+            const inner = document.getElementById('cp-inner-container');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            setTimeout(() => modal.classList.replace('opacity-0', 'opacity-100'), 10);
+            setTimeout(() => {
+                modal.classList.replace('opacity-0', 'opacity-100');
+                if(window.innerWidth < 768 && inner) inner.classList.remove('translate-x-full');
+            }, 10);
             fetchAccessList();
         }
 
         
         function closeControlPanel() {
             const modal = document.getElementById('control-panel-modal');
+            const inner = document.getElementById('cp-inner-container');
             modal.classList.replace('opacity-100', 'opacity-0');
+            if(window.innerWidth < 768 && inner) inner.classList.add('translate-x-full');
             setTimeout(() => {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
@@ -4073,46 +4435,75 @@ async function deleteMeeting(id, skipWebhook = false) {
                 const levelColor = accountLevel === 'Operator' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-zinc-400 bg-white/5 border-white/10';
                 
                 container.innerHTML += `
-                    <div class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                        <div class="flex flex-col w-[30%] pr-2">
-                            <span class="text-sm font-bold text-white capitalize tracking-wide truncate">${displayName}</span>
-                            <span class="text-[9px] text-white/60 lowercase tracking-widest mt-0.5 truncate">${user.email || ''}</span>
-                        </div>
-                        <div class="w-[20%] flex justify-center relative items-center">
-                            <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-md border border-transparent transition-all">${user.role || 'SET ROLE'}</span>
-                            <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest text-center rounded-md border border-white px-3 py-1.5 w-24 focus:outline-none z-10" value="${user.role || ''}">
-                        </div>
-                        <div class="w-[25%] flex justify-center relative items-center">
-                            <div class="relative">
-                                <button onclick="toggleLevelDropdown('${user.email}', event)" class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded border transition-colors flex items-center gap-1.5 ${levelColor}">
-                                    <span>${accountLevel}</span>
-                                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
-                                </button>
-                                <div id="level-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full left-1/2 -translate-x-1/2 mt-1 w-28 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl z-[8000] overflow-hidden">
-                                    <div onclick="updateUserLevelDropdown('${user.email}', 'Member', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer text-center">Member</div>
-                                    <div onclick="updateUserLevelDropdown('${user.email}', 'Operator', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer text-center">Operator</div>
-                                </div>
+                    <div class="user-card-row relative flex flex-col md:flex-row md:items-center justify-between p-3.5 md:p-3 rounded-xl md:rounded-lg bg-white/[0.02] md:bg-white/5 border border-transparent md:border-white/5 md:hover:bg-white/10 transition-colors z-0 gap-3 md:gap-0 mt-1">
+                        <div class="absolute inset-0 rounded-xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
+                        
+                        <div class="relative flex items-center justify-between w-full md:w-[50%] z-10 shrink-0">
+                            <div class="flex flex-col w-[80%] md:w-[60%] pr-2">
+                                <span class="text-sm md:text-sm font-bold text-white capitalize tracking-wide truncate">${displayName}</span>
+                                <span class="text-[10px] md:text-[9px] text-white/60 lowercase tracking-widest mt-0.5 truncate">${user.email || ''}</span>
                             </div>
-                        </div>
-                        <div class="w-[25%] flex items-center justify-end gap-3">
-                            <div class="relative">
-                                <button onclick="toggleStatusDropdown('${user.email}', event)" class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded border transition-colors flex items-center gap-1.5 ${statusColor}">
-                                    <span>${user.status}</span>
-                                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
-                                </button>
-                                <div id="status-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full right-0 mt-1 w-28 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl z-[8000] overflow-hidden">
-                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Active', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-white/10 cursor-pointer text-center">Active</div>
-                                    <div onclick="updateUserStatusDropdown('${user.email}', 'Inactive', event)" class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:bg-white/10 cursor-pointer text-center">Inactive</div>
-                                </div>
+                            <div class="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex-1 md:w-[40%] flex justify-center items-center">
+                                <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer md:hover:text-white md:hover:bg-white/10 px-3 py-1.5 rounded-md border border-transparent transition-all">${user.role || 'SET ROLE'}</span>
+                                <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest text-center rounded-md border border-white/20 md:border-white/50 px-3 py-1.5 w-24 focus:outline-none focus:ring-0 md:focus:ring-1 focus:border-white/40 md:focus:border-white focus:bg-white/5 md:focus:bg-white/20 transition-all z-10" value="${user.role || ''}">
                             </div>
-                            <button onclick="showUserDeleteConfirm('${user.email}')" class="p-1.5 text-red-400 hover:text-white hover:bg-red-500 rounded transition-colors" title="Delete User">
+                            <button onclick="showUserDeleteConfirm('${user.email}')" class="p-1.5 text-red-400 md:hover:text-white md:hover:bg-white/10 rounded transition-colors md:hidden ml-1 shrink-0 z-20" title="Delete User">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
+                        </div>
+                        
+                        <div class="flex items-center w-full md:w-[50%] z-10 gap-2 md:gap-0 mt-1 md:mt-0">
+                            <div class="w-1/2 md:w-[50%] flex justify-center relative items-center">
+                                <div class="relative w-full md:w-auto">
+                                    <button onclick="toggleLevelDropdown('${user.email}', event)" class="w-full md:w-auto justify-between md:justify-center px-3 py-2 md:py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg md:rounded border transition-colors flex items-center gap-1.5 ${levelColor}">
+                                        <span>${accountLevel}</span>
+                                        <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                    </button>
+                                    <div id="level-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full left-0 md:left-1/2 md:-translate-x-1/2 mt-1 w-full md:w-28 bg-[#1a1a1a] md:bg-black border border-white/20 rounded-lg shadow-2xl z-[8000] overflow-hidden opacity-100">
+                                        <div onclick="updateUserLevelDropdown('${user.email}', 'Member', event)" class="px-3 py-2.5 md:py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 md:hover:bg-white/10 cursor-pointer text-center md:text-center">Member</div>
+                                        <div onclick="updateUserLevelDropdown('${user.email}', 'Operator', event)" class="px-3 py-2.5 md:py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 md:hover:bg-white/10 cursor-pointer text-center md:text-center">Operator</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-1/2 md:w-[50%] flex items-center justify-end md:gap-3">
+                                <div class="relative w-full md:w-auto">
+                                    <button onclick="toggleStatusDropdown('${user.email}', event)" class="w-full md:w-auto justify-between md:justify-center px-3 py-2 md:py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg md:rounded border transition-colors flex items-center gap-1.5 ${statusColor}">
+                                        <span>${user.status}</span>
+                                        <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                    </button>
+                                    <div id="status-menu-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" class="hidden absolute top-full right-0 mt-1 w-full md:w-28 bg-[#1a1a1a] md:bg-black border border-white/20 rounded-lg shadow-2xl z-[8000] overflow-hidden opacity-100">
+                                        <div onclick="updateUserStatusDropdown('${user.email}', 'Active', event)" class="px-3 py-2.5 md:py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 md:hover:bg-white/10 cursor-pointer text-center md:text-center">Active</div>
+                                        <div onclick="updateUserStatusDropdown('${user.email}', 'Inactive', event)" class="px-3 py-2.5 md:py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 md:hover:bg-white/10 cursor-pointer text-center md:text-center">Inactive</div>
+                                    </div>
+                                </div>
+                                <button onclick="showUserDeleteConfirm('${user.email}')" class="hidden md:block p-1.5 text-red-400 md:hover:text-white md:hover:bg-red-500 rounded transition-colors shrink-0" title="Delete User">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
             });
             lucide.createIcons();
+        }
+
+        function validateGrantAccessMobile() {
+            if (window.innerWidth >= 768) {
+                document.getElementById('grant-access-btn').classList.replace('hidden', 'flex');
+                return;
+            }
+            const email = document.getElementById('grant-access-email').value;
+            const role = document.getElementById('grant-access-role').value;
+            const btn = document.getElementById('grant-access-btn');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (emailRegex.test(email) && role.trim().length > 0) {
+                btn.classList.remove('hidden');
+                btn.classList.add('flex');
+            } else {
+                btn.classList.add('hidden');
+                btn.classList.remove('flex');
+            }
         }
 
         async function grantAccessUser() {
@@ -4165,6 +4556,7 @@ async function deleteMeeting(id, skipWebhook = false) {
                     emailInput.value = '';
                     roleInput.value = '';
                     fetchAccessList();
+                    validateGrantAccessMobile(); // Reset button visibility on mobile
                 }
             } catch (e) {
                 err.innerText = "An unexpected error occurred.";
@@ -4179,10 +4571,17 @@ async function deleteMeeting(id, skipWebhook = false) {
         function toggleStatusDropdown(email, event) {
             event.stopPropagation();
             const safeEmailId = email.replace(/[@.]/g, '-');
+            
+            document.querySelectorAll('.user-card-row').forEach(row => row.style.zIndex = '0');
+            const menu = document.getElementById(`status-menu-${safeEmailId}`);
+            if (menu && menu.classList.contains('hidden')) {
+                const parentRow = menu.closest('.user-card-row');
+                if (parentRow) parentRow.style.zIndex = '50';
+            }
+
             document.querySelectorAll('[id^="status-menu-"]').forEach(m => {
                 if (m.id !== `status-menu-${safeEmailId}`) m.classList.add('hidden');
             });
-            const menu = document.getElementById(`status-menu-${safeEmailId}`);
             if (menu) menu.classList.toggle('hidden');
         }
 
@@ -4216,10 +4615,17 @@ async function deleteMeeting(id, skipWebhook = false) {
         function toggleLevelDropdown(email, event) {
             event.stopPropagation();
             const safeEmailId = email.replace(/[@.]/g, '-');
+            
+            document.querySelectorAll('.user-card-row').forEach(row => row.style.zIndex = '0');
+            const menu = document.getElementById(`level-menu-${safeEmailId}`);
+            if (menu && menu.classList.contains('hidden')) {
+                const parentRow = menu.closest('.user-card-row');
+                if (parentRow) parentRow.style.zIndex = '50';
+            }
+
             document.querySelectorAll('[id^="level-menu-"]').forEach(m => {
                 if (m.id !== `level-menu-${safeEmailId}`) m.classList.add('hidden');
             });
-            const menu = document.getElementById(`level-menu-${safeEmailId}`);
             if (menu) menu.classList.toggle('hidden');
         }
 
@@ -4291,9 +4697,10 @@ async function deleteMeeting(id, skipWebhook = false) {
         document.addEventListener('click', () => {
             document.querySelectorAll('[id^="status-menu-"]').forEach(m => m.classList.add('hidden'));
             document.querySelectorAll('[id^="level-menu-"]').forEach(m => m.classList.add('hidden'));
+            document.querySelectorAll('.user-card-row').forEach(row => row.style.zIndex = '0');
         });
 
-function showUserDeleteConfirm(email) {
+        function showUserDeleteConfirm(email) {
             window.userEmailToDelete = email;
             const dc = document.getElementById('cp-delete-confirm');
             dc.classList.remove('hidden');
@@ -4443,6 +4850,12 @@ function showUserDeleteConfirm(email) {
                 sidebarInit.innerText = '';
                 sidebarInit.style.backgroundImage = `url(${base64Image})`;
                 
+                const dashMobAvatar = document.getElementById('dashboard-mobile-avatar');
+                if (dashMobAvatar) {
+                    dashMobAvatar.innerText = '';
+                    dashMobAvatar.style.backgroundImage = `url(${base64Image})`;
+                }
+                
                 exitCrop();
                 await fetchCoreData(false);
                 renderDashboard();
@@ -4496,6 +4909,19 @@ function showUserDeleteConfirm(email) {
                 gModal.classList.add('hidden');
                 gModal.classList.remove('flex');
             }
+        }
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
         }
     </script>
 </body>
