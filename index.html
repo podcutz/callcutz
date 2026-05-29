@@ -4962,10 +4962,16 @@ async function deleteMeeting(id, skipWebhook = false) {
 
         document.addEventListener('touchstart', (e) => {
             if (window.innerWidth >= 768) return; // Only run on mobile
+            
+            // EXCLUSION ZONE: Ignore pull-to-refresh if touching inside a scrollable list/menu
+            if (e.target.closest('.overflow-y-auto, .custom-scrollbar, #b-time-slots, .time-dropdown-menu, #tz-list, #filter-modal-list, #cd-participants-list')) return;
+
             if (mainScrollArea.scrollTop <= 0) {
                 ptrStartY = e.touches[0].clientY;
+                ptrCurrentY = ptrStartY; // BUG FIX: Reset current Y instantly to prevent false-positive tap reloads
                 ptrIsPulling = true;
                 ptrLoader.classList.remove('ptr-spinning');
+                ptrLoader.style.transition = 'opacity 0.2s, top 0.2s'; // Ensure smooth snap transitions
             }
         }, { passive: true });
 
@@ -4978,6 +4984,7 @@ async function deleteMeeting(id, skipWebhook = false) {
                 if (e.cancelable) e.preventDefault(); // Extra safety to stop Chrome blue bar
                 
                 let visualDistance = Math.min(pullDistance * 0.4, 60);
+                ptrLoader.style.transition = 'none'; // Disable transition during drag for 1-to-1 finger tracking
                 ptrLoader.style.top = `${visualDistance - 20}px`;
                 ptrLoader.style.opacity = Math.min(visualDistance / 40, 1);
                 ptrLoader.style.transform = `translateX(-50%) rotate(${pullDistance * 2}deg)`;
@@ -4988,19 +4995,46 @@ async function deleteMeeting(id, skipWebhook = false) {
             if (!ptrIsPulling || window.innerWidth >= 768) return;
             ptrIsPulling = false;
             let pullDistance = ptrCurrentY - ptrStartY;
+            
+            ptrLoader.style.transition = 'opacity 0.3s, top 0.3s'; // Restore smooth transitions for snap back
 
             if (pullDistance > 90 && mainScrollArea.scrollTop <= 0) {
-                // Pulled far enough, trigger refresh
+                // Pulled far enough, trigger SOFT NATIVE REFRESH
                 ptrLoader.style.top = '30px';
                 ptrLoader.style.transform = 'translateX(-50%)';
                 ptrLoader.classList.add('ptr-spinning');
                 
-                // Allow a tiny delay for visual smoothness before hard reload
-                setTimeout(() => {
-                    window.location.reload();
-                }, 600);
+                // Perform silent data fetch instead of hard browser reload (Removes white bar)
+                (async () => {
+                    try {
+                        await fetchCoreData(false); // Fetch new DB data silently
+                        
+                        // Re-render the active view smoothly based on where the user is
+                        const activePage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+                        if (activePage === 'dashboard') renderDashboard();
+                        if (activePage === 'availability') initAvailability();
+                        if (activePage === 'teamview') renderTeamGrid();
+                        if (activePage === 'schedule') {
+                            if (document.getElementById('booking-interface').classList.contains('hidden')) {
+                                initScheduleGallery();
+                            } else {
+                                const selectedDateEl = document.querySelector('.booking-day.selected');
+                                if (selectedDateEl) selectedDateEl.click(); // Refresh available slots silently
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Soft refresh failed:", err);
+                    } finally {
+                        // Hide loader gracefully after a minimum spin duration for good UX
+                        setTimeout(() => {
+                            ptrLoader.style.top = '-50px';
+                            ptrLoader.style.opacity = '0';
+                            setTimeout(() => ptrLoader.classList.remove('ptr-spinning'), 300);
+                        }, 600);
+                    }
+                })();
             } else {
-                // Snap back if not pulled far enough
+                // Snap back silently if not pulled far enough
                 ptrLoader.style.top = '-50px';
                 ptrLoader.style.opacity = '0';
             }
