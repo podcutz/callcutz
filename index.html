@@ -4963,12 +4963,18 @@ async function deleteMeeting(id, skipWebhook = false) {
         document.addEventListener('touchstart', (e) => {
             if (window.innerWidth >= 768) return; // Only run on mobile
             
-            // EXCLUSION ZONE: Ignore pull-to-refresh if touching inside a scrollable list/menu
-            if (e.target.closest('.overflow-y-auto, .custom-scrollbar, #b-time-slots, .time-dropdown-menu, #tz-list, #filter-modal-list, #cd-participants-list')) return;
+            // INTELLIGENT EXCLUSION: Find if touch is inside a nested list. We explicitly exclude #mainContent from being treated as a nested list.
+            const nestedList = e.target.closest('#tz-list, #b-time-slots, .time-dropdown-menu, #filter-modal-list, #cd-participants-list, #call-log-container, .custom-scrollbar, .overflow-y-auto:not(#mainContent)');
+            
+            // If inside a nested list and the list is scrolled down, let native scrolling handle it. No PTR.
+            if (nestedList && nestedList.scrollTop > 0) {
+                return;
+            }
 
+            // Only initialize PTR if the main app screen is fully scrolled to the top
             if (mainScrollArea.scrollTop <= 0) {
                 ptrStartY = e.touches[0].clientY;
-                ptrCurrentY = ptrStartY; // BUG FIX: Reset current Y instantly to prevent false-positive tap reloads
+                ptrCurrentY = ptrStartY;
                 ptrIsPulling = true;
                 ptrLoader.classList.remove('ptr-spinning');
                 ptrLoader.style.transition = 'opacity 0.2s, top 0.2s'; // Ensure smooth snap transitions
@@ -4977,9 +4983,17 @@ async function deleteMeeting(id, skipWebhook = false) {
 
         document.addEventListener('touchmove', (e) => {
             if (!ptrIsPulling || window.innerWidth >= 768) return;
+            
             ptrCurrentY = e.touches[0].clientY;
             let pullDistance = ptrCurrentY - ptrStartY;
 
+            // If user starts scrolling up (thumb goes up, pulling content down into view), cancel PTR immediately
+            if (pullDistance < 0) {
+                ptrIsPulling = false;
+                return;
+            }
+
+            // If pulling down (thumb goes down) and main screen is at absolute top, visually activate PTR
             if (pullDistance > 0 && mainScrollArea.scrollTop <= 0) {
                 if (e.cancelable) e.preventDefault(); // Extra safety to stop Chrome blue bar
                 
@@ -5004,7 +5018,7 @@ async function deleteMeeting(id, skipWebhook = false) {
                 ptrLoader.style.transform = 'translateX(-50%)';
                 ptrLoader.classList.add('ptr-spinning');
                 
-                // Perform silent data fetch instead of hard browser reload (Removes white bar)
+                // Perform silent data fetch instead of hard browser reload
                 (async () => {
                     try {
                         await fetchCoreData(false); // Fetch new DB data silently
