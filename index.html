@@ -1891,31 +1891,13 @@
             if(!authUserId) return;
             
             // OPTIMIZATION: Fetch all heavy database tables simultaneously to load the app in milliseconds
-            let profiles, avail, meets;
-            try {
-                if (!navigator.onLine) throw new Error("Offline");
-                
-                const [profilesRes, availRes, meetsRes] = await Promise.all([
-                    supabaseClient.from('profiles').select('*'),
-                    supabaseClient.from('availability').select('*').eq('user_id', authUserId),
-                    supabaseClient.from('meetings').select('*, meeting_participants ( user_id, response_status, profiles:user_id (full_name) )').order('start_time_utc', { ascending: true })
-                ]);
-                
-                profiles = profilesRes.data;
-                avail = availRes.data;
-                meets = meetsRes.data;
+            const [profilesRes, availRes, meetsRes] = await Promise.all([
+                supabaseClient.from('profiles').select('*'),
+                supabaseClient.from('availability').select('*').eq('user_id', authUserId),
+                supabaseClient.from('meetings').select('*, meeting_participants ( user_id, response_status, profiles:user_id (full_name) )').order('start_time_utc', { ascending: true })
+            ]);
 
-                if (profiles) localStorage.setItem(`offline_profiles_${authUserId}`, JSON.stringify(profiles));
-                if (avail) localStorage.setItem(`offline_avail_${authUserId}`, JSON.stringify(avail));
-                if (meets) localStorage.setItem(`offline_meets_${authUserId}`, JSON.stringify(meets));
-            } catch (err) {
-                console.warn("Loading from offline cache", err);
-                showToast("Offline Mode: Showing last saved data.");
-                profiles = JSON.parse(localStorage.getItem(`offline_profiles_${authUserId}`)) || null;
-                avail = JSON.parse(localStorage.getItem(`offline_avail_${authUserId}`)) || null;
-                meets = JSON.parse(localStorage.getItem(`offline_meets_${authUserId}`)) || null;
-            }
-
+            const profiles = profilesRes.data;
             if (profiles) {
                 teamMembers = profiles.map(p => ({
                     id: p.id,
@@ -1984,8 +1966,10 @@
                 }
             }
 
+            const avail = availRes.data;
             if (avail) dbAvailability = avail;
 
+            const meets = meetsRes.data;
             if (meets) {
                 // DYNAMIC RBAC: Automatically allows any current or future 'Operator' to view all meetings
                 const isAllowedTeamView = currentUserProfile?.account_level === 'Operator';
@@ -2307,10 +2291,8 @@
                 currentUserProfile.email = session.user.email;
                 
                 // RBAC SECURITY: Check if user has been inactivated or removed securely via RPC
-            const { data: accessData, error: accessError } = await supabaseClient.rpc('check_access_status', { lookup_email: session.user.email });
-            if (accessError && !navigator.onLine) {
-                console.warn("Offline: Bypassing security check to load local data.");
-            } else if (!accessData || accessData.length === 0 || accessData[0].status !== 'Active') {
+            const { data: accessData } = await supabaseClient.rpc('check_access_status', { lookup_email: session.user.email });
+            if (!accessData || accessData.length === 0 || accessData[0].status !== 'Active') {
                 await supabaseClient.auth.signOut();
                 // Show login screen correctly
                 document.getElementById('sidebar').classList.add('hidden');
