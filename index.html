@@ -1817,6 +1817,7 @@
 
             await fetchCoreData(true);
             setupRealtimeSubscriptions();
+            registerPushSubscription();
 
             initAvailability();
             initScheduleGallery();
@@ -3386,6 +3387,11 @@ if (hasRealConflict) {
 
             closeBooking();
             showSuccessScreen('Booking Sent', `Request submitted to ${otherNames}`);
+
+                // Notify each invitee via push
+                const inviteeIds = currentBookingParticipants.map(p => p.id);
+                const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
+                sendPushNotification(inviteeIds, '📅 New Meeting Request', `${hostName} wants to book: ${finalTitle}`, 'meeting-request');
                 
                 // Immediately refresh state behind the scenes for the sender
                 await fetchCoreData(false);
@@ -4108,6 +4114,18 @@ function renderDashboard() {
         if (hasChanged) {
             // Send to Database (Backend trigger automatically handles the n8n webhook)
             await supabaseClient.from('meetings').update({ title: newTitle, description: newNotes }).eq('id', mId);
+
+                    // Notify accepted non-host participants of the edit
+                    const editedMeeting = dbMeetings[mIndex];
+                    if (editedMeeting) {
+                        const participantsToNotify = editedMeeting.meeting_participants
+                            .filter(p => p.user_id !== authUserId && !editedMeeting.host_id.includes(p.user_id) && p.response_status === 'accepted')
+                            .map(p => p.user_id);
+                        if (participantsToNotify.length > 0) {
+                            const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
+                            sendPushNotification(participantsToNotify, '✏️ Meeting Updated', `${hostName} updated: ${newTitle}`, 'meeting-edited');
+                        }
+                    }
         }
             } catch (e) {
                 console.error("Failed to save meeting edit", e);
@@ -4157,11 +4175,29 @@ function renderDashboard() {
 async function deleteMeeting(id, skipWebhook = false) {
             if (pwaOfflineGuard()) return;
             try {
+                // Collect participants to notify BEFORE deleting
+                const meetingToDelete = dbMeetings.find(m => m.id === id);
+                let participantsToNotify = [];
+                let deletedTitle = 'A meeting';
+                if (meetingToDelete) {
+                    deletedTitle = meetingToDelete.title || 'A meeting';
+                    participantsToNotify = meetingToDelete.meeting_participants
+                        .filter(p => p.user_id !== authUserId && p.response_status === 'accepted')
+                        .map(p => p.user_id);
+                }
+
                 // Optimistic UI Update: Instantly remove from view
         dbMeetings = dbMeetings.filter(m => m.id !== id);
         renderDashboard();
 
         await supabaseClient.from('meetings').delete().eq('id', id);
+
+                // Notify accepted participants (excluding the host who deleted it)
+                if (participantsToNotify.length > 0) {
+                    const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
+                    sendPushNotification(participantsToNotify, '🗑️ Meeting Cancelled', `${hostName} cancelled: ${deletedTitle}`, 'meeting-deleted');
+                }
+
         await fetchCoreData(false);
         renderDashboard();
     } catch(e) { 
@@ -4204,6 +4240,18 @@ async function deleteMeeting(id, skipWebhook = false) {
                 if (error) throw error;
 
                 if(action === 'accepted') showSuccessScreen('Request Accepted', 'Added to your schedule');
+
+                // Notify the host of the response
+                const respondedMeeting = dbMeetings.find(m => m.id === meetingId);
+                if (respondedMeeting) {
+                    const hostIds = respondedMeeting.host_id.filter(id => id !== authUserId);
+                    if (hostIds.length > 0) {
+                        const responderName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
+                        const actionLabel = action === 'accepted' ? 'accepted ✅' : 'declined ❌';
+                        sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted ✅' : 'Declined ❌'}`, `${responderName} ${actionLabel} your meeting: ${respondedMeeting.title || 'Meeting'}`, 'meeting-response');
+                    }
+                }
+
                 await fetchCoreData(false);
                 renderDashboard();
             } catch(e) {
@@ -4506,6 +4554,19 @@ async function deleteMeeting(id, skipWebhook = false) {
                         hidePasswordView();
                     }
                 }, 5000);
+
+                // Send a local OS notification to THIS device via service worker
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        if (reg && reg.active) {
+                            reg.active.postMessage({
+                                type: 'LOCAL_NOTIFICATION',
+                                title: '🔐 Password Changed',
+                                body: 'Your Callcutz password was successfully updated.'
+                            });
+                        }
+                    });
+                }
             }
         }
 
@@ -5246,6 +5307,69 @@ async function deleteMeeting(id, skipWebhook = false) {
                 return true; // Caller must abort
             }
             return false;
+        }
+
+        // PWA PUSH NOTIFICATIONS
+        const VAPID_PUBLIC_KEY = 'BCIIpPz64bIzSpEGCgPH8It5eMTqvtUA2-JKjQJficFYoMpgEdbMJLaSOvjy9gu74Kf-FIArTZYtTw7eRqIFJQU';
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = atob(base64);
+            return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+        }
+
+        async function registerPushSubscription() {
+            try {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+                if (!isPWA) return; // Only run in PWA mode
+                if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+                if (!authUserId) return;
+
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') return;
+
+                const registration = await navigator.serviceWorker.ready;
+                const existingSub = await registration.pushManager.getSubscription();
+                if (existingSub) {
+                    // Already subscribed — save/refresh in DB
+                    await savePushSubscription(existingSub);
+                    return;
+                }
+
+                const sub = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+                await savePushSubscription(sub);
+            } catch (e) {
+                console.log('Push registration skipped:', e.message);
+            }
+        }
+
+        async function savePushSubscription(sub) {
+            try {
+                const subJson = sub.toJSON();
+                await supabaseClient.from('push_subscriptions').upsert({
+                    user_id: authUserId,
+                    endpoint: subJson.endpoint,
+                    p256dh: subJson.keys.p256dh,
+                    auth: subJson.keys.auth
+                }, { onConflict: 'user_id,endpoint' });
+            } catch (e) {
+                console.log('Push subscription save error:', e);
+            }
+        }
+
+        async function sendPushNotification(targetUserIds, title, body, tag) {
+            try {
+                if (!targetUserIds || targetUserIds.length === 0) return;
+                await supabaseClient.functions.invoke('send-push-notification', {
+                    body: { target_user_ids: targetUserIds, title, body, tag }
+                });
+            } catch (e) {
+                console.log('Push send error:', e);
+            }
         }
 
         // PWA Service Worker Registration
