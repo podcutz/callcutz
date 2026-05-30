@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v2';
+const CACHE_NAME = 'callcutz-v3';
 
 // All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
@@ -50,6 +50,7 @@ self.addEventListener('push', (event) => {
         const title = data.title || 'Callcutz';
         const options = {
             body: data.body || '',
+            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780061690/Untitled_design__2_-removebg-preview_p8g0sc.png',
             tag: data.tag || 'callcutz-notification',
             renotify: true,
@@ -86,6 +87,7 @@ self.addEventListener('message', (event) => {
         const title = event.data.title || 'Callcutz';
         const options = {
             body: event.data.body || '',
+            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: 'password-change',
             renotify: true,
