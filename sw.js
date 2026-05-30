@@ -42,6 +42,59 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// PUSH NOTIFICATIONS: Handle incoming server push events
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+    try {
+        const data = event.data.json();
+        const title = data.title || 'Callcutz';
+        const options = {
+            body: data.body || '',
+            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            tag: data.tag || 'callcutz-notification',
+            renotify: true,
+            vibrate: [200, 100, 200],
+            data: { url: self.location.origin }
+        };
+        event.waitUntil(self.registration.showNotification(title, options));
+    } catch(e) {
+        console.log('Push parse error:', e);
+    }
+});
+
+// Handle notification click: open/focus the PWA
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            for (const client of windowClients) {
+                if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(self.location.origin);
+            }
+        })
+    );
+});
+
+// Handle LOCAL_NOTIFICATION messages from the page (e.g. password change)
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'LOCAL_NOTIFICATION') {
+        const title = event.data.title || 'Callcutz';
+        const options = {
+            body: event.data.body || '',
+            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            tag: 'password-change',
+            vibrate: [200, 100, 200]
+        };
+        self.registration.showNotification(title, options);
+    }
+});
+
 // Fetch: smart caching strategy
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
