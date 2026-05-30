@@ -63,21 +63,34 @@
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
         .pt-safe { padding-top: calc(1rem + env(safe-area-inset-top, 0px)); }
 
-        /* PWA: Extend bottom nav background into the system gesture/home-indicator zone */
+        /* PWA iOS: Fill the status bar zone with the exact app background color so it reads as one surface */
         @media (max-width: 767px) {
-            #mobile-nav::after {
+            body::before {
                 content: '';
-                display: block;
-                position: absolute;
-                bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+                position: fixed;
+                top: 0;
                 left: 0;
                 right: 0;
-                height: env(safe-area-inset-bottom, 0px);
-                background: rgba(5,5,5,0.82);
-                backdrop-filter: blur(20px) saturate(180%);
-                -webkit-backdrop-filter: blur(20px) saturate(180%);
+                height: env(safe-area-inset-top, 0px);
+                background: #000000;
+                z-index: 99999;
                 pointer-events: none;
-                z-index: -1;
+            }
+        }
+
+        /* PWA: Unified status bar + bottom gesture zone — works on iOS Safari & Android Chrome */
+        @media (max-width: 767px) {
+            #mobile-nav {
+                /* Solid background that bleeds into home indicator zone — no backdrop-filter needed */
+                background: #050505 !important;
+                /* Extend the nav's own background color behind the system home indicator */
+                padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+                /* Remove the pb-safe class double-padding — we handle it here directly */
+                box-shadow: 0 -1px 0 rgba(255,255,255,0.07);
+            }
+            /* Remove the py-4 bottom padding leak when safe-area kicks in */
+            #mobile-nav .flex.items-center.justify-evenly {
+                padding-bottom: 0 !important;
             }
         }
 
@@ -579,7 +592,7 @@
         </div>
     </aside>
 
-    <nav id="mobile-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-[100] hidden pb-safe" style="background: rgba(5,5,5,0.82); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-top: 1px solid rgba(255,255,255,0.07);">
+    <nav id="mobile-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-[100] hidden">
         <div class="flex items-center justify-evenly w-full py-4 px-2">
             <button onclick="showPage('dashboard')" class="mobile-nav-item flex justify-center items-center text-zinc-500 hover:text-white transition-colors w-12 h-8" data-target="dashboard">
                 <i data-lucide="layout-dashboard" class="w-[22px] h-[22px]"></i>
