@@ -5378,10 +5378,26 @@ async function deleteMeeting(id, skipWebhook = false) {
                 navigator.serviceWorker.register('sw.js')
                     .then(registration => {
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        
+                        // Automatically check for updates whenever the user opens the app from background
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible') {
+                                registration.update();
+                            }
+                        });
                     })
                     .catch(error => {
                         console.log('ServiceWorker registration failed: ', error);
                     });
+
+                // When a new service worker takes over, reload the page instantly to show the new update
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
             });
         }
 
