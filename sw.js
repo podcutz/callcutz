@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v3';
+const CACHE_NAME = 'callcutz-v4';
 
 // All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
