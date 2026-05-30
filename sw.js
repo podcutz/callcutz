@@ -51,7 +51,7 @@ self.addEventListener('push', (event) => {
         const options = {
             body: data.body || '',
             icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780061690/Untitled_design__2_-removebg-preview_p8g0sc.png',
             tag: data.tag || 'callcutz-notification',
             renotify: true,
             vibrate: [200, 100, 200],
@@ -103,33 +103,48 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
     // Never intercept Supabase API calls — these must always go to the network
-    // (offline fallback is handled in the app via localStorage, not here)
     if (url.hostname.includes('supabase.co') || url.hostname.includes('google.com')) {
-        return; // Let it fail naturally so the app's own offline logic kicks in
+        return; 
     }
 
-    // For everything else: try network first, fall back to cache
+    // CRITICAL FIX: For HTML requests (the app shell), force network check bypassing HTTP cache.
+    // This ensures users always get your newest deployed code without clearing browser cache.
+    if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('index.html')) {
+        event.respondWith(
+            fetch(event.request, { cache: 'no-store' })
+                .then((response) => {
+                    if (response && response.status === 200) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // Network failed (Offline) — serve from cache
+                    return caches.match(event.request).then((cached) => {
+                        return cached || caches.match('./index.html');
+                    });
+                })
+        );
+        return;
+    }
+
+    // For everything else (images, CDNs): Use 'Stale-While-Revalidate' for instant loading,
+    // while updating the cache in the background for next time.
     event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                // If we got a valid response, update the cache with it
+        caches.match(event.request).then((cachedResponse) => {
+            const networkFetch = fetch(event.request).then((response) => {
                 if (response && response.status === 200) {
                     const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
                 }
                 return response;
-            })
-            .catch(() => {
-                // Network failed — serve from cache
-                return caches.match(event.request).then((cached) => {
-                    if (cached) return cached;
-                    // Last resort for navigation requests: return the app shell
-                    if (event.request.mode === 'navigate') {
-                        return caches.match('./index.html');
-                    }
-                });
-            })
+            }).catch(() => {
+                // Ignore network failures for assets since we have cache fallback
+            });
+
+            // Return cached response instantly if available, otherwise wait for network
+            return cachedResponse || networkFetch;
+        })
     );
 });
