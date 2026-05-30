@@ -16,7 +16,7 @@
     },
     {
       "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png",
-      "sizes": "512x512",
+      "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"
     }
