@@ -245,6 +245,11 @@
 
     <div id="custom-ptr-loader" class="md:hidden"></div>
 
+    <!-- PWA Offline Toast -->
+    <div id="pwa-offline-toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-5 py-3 rounded-2xl bg-black/70 backdrop-blur-md shadow-2xl pointer-events-none" style="border: 1px solid rgba(255,255,255,0.08);">
+        <p id="pwa-offline-toast-msg" class="text-white text-[13px] font-semibold text-center whitespace-nowrap tracking-tight"></p>
+    </div>
+
     <div id="page-login" class="fixed inset-0 z-[2000] bg-black hidden flex-col items-center justify-center">
         
         <div class="w-full max-w-sm p-8 bg-[#050505] border border-white/10 rounded-2xl shadow-2xl min-h-[500px] flex flex-col relative">
@@ -1870,17 +1875,22 @@
             }
             
             // Automatically prompt for Google Sync if tokens are missing
-            if (!currentUserProfile.google_refresh_token && !currentUserProfile.google_access_token) {
-                const gModal = document.getElementById('google-sync-modal');
-                if (gModal) {
-                    gModal.classList.remove('hidden');
-                    gModal.classList.add('flex');
-                }
-            } else if (!currentUserProfile.timezone || currentUserProfile.timezone === 'UTC') {
-                const tzPrompt = document.getElementById('timezone-prompt-modal');
-                if (tzPrompt) {
-                    tzPrompt.classList.remove('hidden');
-                    tzPrompt.classList.add('flex');
+            // OFFLINE GUARD: Never show this modal when offline — user cannot complete OAuth flow without internet
+            const isPWA_cl = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+            const isOffline_cl = !navigator.onLine;
+            if (!isPWA_cl || !isOffline_cl) {
+                if (!currentUserProfile.google_refresh_token && !currentUserProfile.google_access_token) {
+                    const gModal = document.getElementById('google-sync-modal');
+                    if (gModal) {
+                        gModal.classList.remove('hidden');
+                        gModal.classList.add('flex');
+                    }
+                } else if (!currentUserProfile.timezone || currentUserProfile.timezone === 'UTC') {
+                    const tzPrompt = document.getElementById('timezone-prompt-modal');
+                    if (tzPrompt) {
+                        tzPrompt.classList.remove('hidden');
+                        tzPrompt.classList.add('flex');
+                    }
                 }
             }
             
@@ -1961,17 +1971,22 @@
                     }
                     
                     // Show Google Sync Modal if tokens are missing
-                    if (!myProfile.google_refresh_token && !myProfile.google_access_token) {
-                        const gModal = document.getElementById('google-sync-modal');
-                        if (gModal) {
-                            gModal.classList.remove('hidden');
-                            gModal.classList.add('flex');
-                        }
-                    } else if (!myProfile.timezone || myProfile.timezone === 'UTC') {
-                        const tzPrompt = document.getElementById('timezone-prompt-modal');
-                        if (tzPrompt) {
-                            tzPrompt.classList.remove('hidden');
-                            tzPrompt.classList.add('flex');
+                    // OFFLINE GUARD: Never show this when offline — OAuth requires internet
+                    const isPWA_fcd = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+                    const isOffline_fcd = !navigator.onLine;
+                    if (!isPWA_fcd || !isOffline_fcd) {
+                        if (!myProfile.google_refresh_token && !myProfile.google_access_token) {
+                            const gModal = document.getElementById('google-sync-modal');
+                            if (gModal) {
+                                gModal.classList.remove('hidden');
+                                gModal.classList.add('flex');
+                            }
+                        } else if (!myProfile.timezone || myProfile.timezone === 'UTC') {
+                            const tzPrompt = document.getElementById('timezone-prompt-modal');
+                            if (tzPrompt) {
+                                tzPrompt.classList.remove('hidden');
+                                tzPrompt.classList.add('flex');
+                            }
                         }
                     }
                 }
@@ -2284,6 +2299,89 @@
 
         window.onload = async () => {
             if (!supabaseClient) return lucide.createIcons();
+
+            // PWA INSTANT OFFLINE BOOT: If offline as PWA, skip ALL network calls and restore from snapshot immediately
+            const isPWA_boot = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+            const isOffline_boot = !navigator.onLine;
+            if (isPWA_boot && isOffline_boot) {
+                // Show the offline notification immediately — no delay
+                setTimeout(() => showOfflineToast("Couldn't refresh the app"), 0);
+                try {
+                    const snapshot = localStorage.getItem('callcutz_offline_snapshot');
+                    if (snapshot) {
+                        const parsed = JSON.parse(snapshot);
+                        teamMembers = parsed.teamMembers || [];
+                        dbMeetings = parsed.dbMeetings || [];
+                        dbAvailability = parsed.dbAvailability || [];
+                        const savedProfile = localStorage.getItem('callcutz_user_profile');
+                        if (savedProfile) {
+                            currentUserProfile = JSON.parse(savedProfile);
+                            authUserId = currentUserProfile.id || null;
+                            currentUserTimezone = currentUserProfile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            document.getElementById('page-login').classList.add('hidden');
+                            document.getElementById('page-login').classList.remove('flex');
+                            document.getElementById('sidebar').classList.add('hidden');
+                            document.getElementById('sidebar').classList.add('md:flex');
+                            document.getElementById('mainContent').classList.remove('hidden');
+                            const mobileNav = document.getElementById('mobile-nav');
+                            if (mobileNav) mobileNav.classList.remove('hidden');
+                            const name = currentUserProfile.full_name || 'User';
+                            const role = currentUserProfile.role || 'Member';
+                            const firstName = name.split(' ')[0];
+                            const init = firstName.charAt(0).toUpperCase();
+                            document.getElementById('sidebar-user-name').innerText = name;
+                            document.getElementById('sidebar-user-role').innerText = role;
+                            document.getElementById('sidebar-user-init').innerText = init;
+                            const mobileUserName = document.getElementById('mobile-user-name');
+                            if (mobileUserName) {
+                                mobileUserName.innerText = name;
+                                document.getElementById('mobile-user-role').innerText = role;
+                                document.getElementById('mobile-user-avatar').innerText = init;
+                            }
+                            const pageMobileUserName = document.getElementById('page-mobile-user-name');
+                            if (pageMobileUserName) {
+                                pageMobileUserName.innerText = name;
+                                document.getElementById('page-mobile-user-role').innerText = role;
+                                document.getElementById('page-mobile-user-avatar').innerText = init;
+                            }
+                            if (currentUserProfile.account_level === 'Operator') {
+                                const opBtn = document.getElementById('operator-panel-btn');
+                                if (opBtn) { opBtn.classList.remove('hidden'); opBtn.classList.add('flex'); }
+                                const mobOpBtn = document.getElementById('mobile-operator-panel-btn');
+                                if (mobOpBtn) { mobOpBtn.classList.remove('hidden'); mobOpBtn.classList.add('flex'); }
+                                const pageMobOpBtn = document.getElementById('page-mobile-operator-panel-btn');
+                                if (pageMobOpBtn) { pageMobOpBtn.classList.remove('hidden'); pageMobOpBtn.classList.add('flex'); }
+                            }
+                            populateTimezones();
+                            initAvailability();
+                            initScheduleGallery();
+                            renderDashboard();
+                            const teamViewNav = document.getElementById('nav-teamview');
+                            const mobileTeamViewNav = document.getElementById('mobile-nav-teamview');
+                            const isAllowedTeamView = currentUserProfile.account_level === 'Operator';
+                            if (teamViewNav) {
+                                if (isAllowedTeamView) { teamViewNav.classList.remove('hidden'); teamViewNav.classList.add('flex'); }
+                                else { teamViewNav.classList.add('hidden'); }
+                            }
+                            if (mobileTeamViewNav) {
+                                if (isAllowedTeamView) { mobileTeamViewNav.classList.remove('hidden'); mobileTeamViewNav.classList.add('flex'); }
+                                else { mobileTeamViewNav.classList.add('hidden'); }
+                            }
+                            const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+                            showPage(savedPage === 'teamview' && !isAllowedTeamView ? 'dashboard' : savedPage);
+                            lucide.createIcons();
+                            return;
+                        }
+                    }
+                } catch(e) {}
+                // No snapshot — show login
+                const loginPage = document.getElementById('page-login');
+                loginPage.classList.remove('hidden');
+                loginPage.classList.add('flex');
+                lucide.createIcons();
+                return;
+            }
+
             // Check if user is already logged in (active session)
             const { data: sessionData } = await supabaseClient.auth.getSession();
             const session = sessionData?.session;
@@ -2650,6 +2748,7 @@
         }
 
         async function saveAvailability() {
+            if (pwaOfflineGuard()) return;
             const btn = document.getElementById('save-avail-btn');
             btn.innerText = "Saving..."; btn.disabled = true;
 
@@ -3147,6 +3246,7 @@ validMeetingIds = [...validMeetingIds];
 
         async function submitBookingRequest() {
             if (!activeSelectedSlot) return;
+            if (pwaOfflineGuard()) return;
             const btn = document.getElementById('send-booking-btn');
             btn.innerText = "Processing..."; btn.disabled = true;
 
@@ -4011,6 +4111,7 @@ function renderDashboard() {
         }
 
 async function deleteMeeting(id, skipWebhook = false) {
+            if (pwaOfflineGuard()) return;
             try {
                 // Optimistic UI Update: Instantly remove from view
         dbMeetings = dbMeetings.filter(m => m.id !== id);
@@ -4045,6 +4146,7 @@ async function deleteMeeting(id, skipWebhook = false) {
         }
 
         async function handleRequest(meetingId, action) {
+            if (pwaOfflineGuard()) return;
             // Optimistic UI Update: Instantly change status in local array
             const meetingIndex = dbMeetings.findIndex(m => m.id === meetingId);
             if (meetingIndex > -1) {
@@ -4670,6 +4772,7 @@ async function deleteMeeting(id, skipWebhook = false) {
         }
 
         async function grantAccessUser() {
+            if (pwaOfflineGuard()) return;
             const emailInput = document.getElementById('grant-access-email');
             const roleInput = document.getElementById('grant-access-role');
             const err = document.getElementById('grant-access-error');
@@ -4906,6 +5009,7 @@ async function deleteMeeting(id, skipWebhook = false) {
         }
 
         async function saveNameEdit() {
+            if (pwaOfflineGuard()) return;
             const input = document.getElementById('modal-input-name');
             const display = document.getElementById('modal-display-name');
             const newName = input.value.trim();
@@ -4994,6 +5098,7 @@ async function deleteMeeting(id, skipWebhook = false) {
         
         document.getElementById('save-crop').addEventListener('click', async () => {
             if(!cropperInstance) return;
+            if (pwaOfflineGuard()) return;
             const btn = document.getElementById('save-crop');
             btn.innerText = "Saving..."; btn.disabled = true;
             
@@ -5072,6 +5177,31 @@ async function deleteMeeting(id, skipWebhook = false) {
                 gModal.classList.add('hidden');
                 gModal.classList.remove('flex');
             }
+        }
+
+        // PWA OFFLINE TOAST: Instagram-style centered card notification
+        function showOfflineToast(msg) {
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+            if (!isPWA) return; // Only show in PWA mode, never in browser
+            const toast = document.getElementById('pwa-offline-toast');
+            const toastMsg = document.getElementById('pwa-offline-toast-msg');
+            if (!toast || !toastMsg) return;
+            toastMsg.innerText = msg || "Couldn't refresh the app";
+            toast.classList.remove('hidden');
+            if (toast._hideTimer) clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3500);
+        }
+
+        // PWA OFFLINE NETWORK GUARD: Call this before any Supabase write in PWA mode
+        function pwaOfflineGuard() {
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+            if (isPWA && !navigator.onLine) {
+                showOfflineToast('Please check your internet');
+                return true; // Caller must abort
+            }
+            return false;
         }
 
         // PWA Service Worker Registration
