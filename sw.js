@@ -51,10 +51,11 @@ self.addEventListener('push', (event) => {
         const options = {
             body: data.body || '',
             icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: data.tag || 'callcutz-notification',
             renotify: true,
             vibrate: [200, 100, 200],
+            silent: false,
             data: { url: self.location.origin }
         };
         event.waitUntil(self.registration.showNotification(title, options));
@@ -87,9 +88,11 @@ self.addEventListener('message', (event) => {
         const options = {
             body: event.data.body || '',
             icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: 'password-change',
-            vibrate: [200, 100, 200]
+            renotify: true,
+            vibrate: [200, 100, 200],
+            silent: false
         };
         self.registration.showNotification(title, options);
     }
