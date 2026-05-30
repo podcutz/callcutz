@@ -3391,7 +3391,7 @@ if (hasRealConflict) {
                 // Notify each invitee via push
                 const inviteeIds = currentBookingParticipants.map(p => p.id);
                 const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
-                sendPushNotification(inviteeIds, '📅 New Meeting Request', `${hostName} wants to book: ${finalTitle}`, 'meeting-request');
+                sendPushNotification(inviteeIds, 'New Meeting Request', `${hostName} wants to book a meetong: ${finalTitle}`, 'meeting-request');
                 
                 // Immediately refresh state behind the scenes for the sender
                 await fetchCoreData(false);
@@ -4123,7 +4123,7 @@ function renderDashboard() {
                             .map(p => p.user_id);
                         if (participantsToNotify.length > 0) {
                             const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
-                            sendPushNotification(participantsToNotify, '✏️ Meeting Updated', `${hostName} updated: ${newTitle}`, 'meeting-edited');
+                            sendPushNotification(participantsToNotify, 'Meeting Updated', `${hostName} updated: ${newTitle}`, 'meeting-edited');
                         }
                     }
         }
@@ -4195,7 +4195,7 @@ async function deleteMeeting(id, skipWebhook = false) {
                 // Notify accepted participants (excluding the host who deleted it)
                 if (participantsToNotify.length > 0) {
                     const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
-                    sendPushNotification(participantsToNotify, '🗑️ Meeting Cancelled', `${hostName} cancelled: ${deletedTitle}`, 'meeting-deleted');
+                    sendPushNotification(participantsToNotify, 'Meeting Cancelled', `${hostName} cancelled: ${deletedTitle}`, 'meeting-deleted');
                 }
 
         await fetchCoreData(false);
@@ -4247,8 +4247,8 @@ async function deleteMeeting(id, skipWebhook = false) {
                     const hostIds = respondedMeeting.host_id.filter(id => id !== authUserId);
                     if (hostIds.length > 0) {
                         const responderName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
-                        const actionLabel = action === 'accepted' ? 'accepted ✅' : 'declined ❌';
-                        sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted ✅' : 'Declined ❌'}`, `${responderName} ${actionLabel} your meeting: ${respondedMeeting.title || 'Meeting'}`, 'meeting-response');
+                        const actionLabel = action === 'accepted' ? 'accepted' : 'declined';
+                        sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted' : 'Declined'}`, `${responderName} ${actionLabel} your meeting: ${respondedMeeting.title || 'Meeting'}`, 'meeting-response');
                     }
                 }
 
