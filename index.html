@@ -1788,16 +1788,7 @@
             const mobileNav = document.getElementById('mobile-nav');
             if(mobileNav) mobileNav.classList.remove('hidden');
 
-            // PWA OFFLINE: Save user profile so it can be restored when offline
-            try {
-                const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-                if (isPWA && currentUserProfile && authUserId) {
-                    localStorage.setItem('callcutz_user_profile', JSON.stringify({
-                        ...currentUserProfile,
-                        id: authUserId
-                    }));
-                }
-            } catch(e) {}
+            // PWA OFFLINE: Profile save moved to AFTER fetchCoreData() so avatar is included
             
             currentUserTimezone = currentUserProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
             populateTimezones();
@@ -1970,6 +1961,17 @@
                         }
                     }
                     
+                    // PWA OFFLINE: Save user profile NOW (after avatar is set) so offline boot has the photo
+                    try {
+                        const isPWA_save = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+                        if (isPWA_save && currentUserProfile && authUserId) {
+                            localStorage.setItem('callcutz_user_profile', JSON.stringify({
+                                ...currentUserProfile,
+                                id: authUserId
+                            }));
+                        }
+                    } catch(e) {}
+
                     // Show Google Sync Modal if tokens are missing
                     // OFFLINE GUARD: Never show this when offline — OAuth requires internet
                     const isPWA_fcd = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
