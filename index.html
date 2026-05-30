@@ -246,7 +246,7 @@
     <div id="custom-ptr-loader" class="md:hidden"></div>
 
     <!-- PWA Offline Toast -->
-    <div id="pwa-offline-toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-5 py-3 rounded-2xl bg-black/70 backdrop-blur-md shadow-2xl pointer-events-none" style="border: 1px solid rgba(255,255,255,0.08);">
+    <div id="pwa-offline-toast" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[99999] px-5 py-3 rounded-2xl bg-black/70 backdrop-blur-md shadow-2xl pointer-events-none" style="border: 1px solid rgba(255,255,255,0.08);">
         <p id="pwa-offline-toast-msg" class="text-white text-[13px] font-semibold text-center whitespace-nowrap tracking-tight"></p>
     </div>
 
@@ -2331,18 +2331,39 @@
                             const init = firstName.charAt(0).toUpperCase();
                             document.getElementById('sidebar-user-name').innerText = name;
                             document.getElementById('sidebar-user-role').innerText = role;
-                            document.getElementById('sidebar-user-init').innerText = init;
+                            const sidebarInitEl = document.getElementById('sidebar-user-init');
+                            if (currentUserProfile.avatar) {
+                                sidebarInitEl.innerText = '';
+                                sidebarInitEl.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                            } else {
+                                sidebarInitEl.innerText = init;
+                                sidebarInitEl.style.backgroundImage = 'none';
+                            }
                             const mobileUserName = document.getElementById('mobile-user-name');
                             if (mobileUserName) {
                                 mobileUserName.innerText = name;
                                 document.getElementById('mobile-user-role').innerText = role;
-                                document.getElementById('mobile-user-avatar').innerText = init;
+                                const mobAvatarEl = document.getElementById('mobile-user-avatar');
+                                if (currentUserProfile.avatar) {
+                                    mobAvatarEl.innerText = '';
+                                    mobAvatarEl.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                                } else {
+                                    mobAvatarEl.innerText = init;
+                                    mobAvatarEl.style.backgroundImage = 'none';
+                                }
                             }
                             const pageMobileUserName = document.getElementById('page-mobile-user-name');
                             if (pageMobileUserName) {
                                 pageMobileUserName.innerText = name;
                                 document.getElementById('page-mobile-user-role').innerText = role;
-                                document.getElementById('page-mobile-user-avatar').innerText = init;
+                                const pageAvatarEl = document.getElementById('page-mobile-user-avatar');
+                                if (currentUserProfile.avatar) {
+                                    pageAvatarEl.innerText = '';
+                                    pageAvatarEl.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                                } else {
+                                    pageAvatarEl.innerText = init;
+                                    pageAvatarEl.style.backgroundImage = 'none';
+                                }
                             }
                             if (currentUserProfile.account_level === 'Operator') {
                                 const opBtn = document.getElementById('operator-panel-btn');
@@ -2507,20 +2528,41 @@
 
                                 document.getElementById('sidebar-user-name').innerText = name;
                                 document.getElementById('sidebar-user-role').innerText = role;
-                                document.getElementById('sidebar-user-init').innerText = init;
+                                const sidebarInitEl2 = document.getElementById('sidebar-user-init');
+                                if (currentUserProfile.avatar) {
+                                    sidebarInitEl2.innerText = '';
+                                    sidebarInitEl2.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                                } else {
+                                    sidebarInitEl2.innerText = init;
+                                    sidebarInitEl2.style.backgroundImage = 'none';
+                                }
 
                                 const mobileUserName = document.getElementById('mobile-user-name');
                                 if (mobileUserName) {
                                     mobileUserName.innerText = name;
                                     document.getElementById('mobile-user-role').innerText = role;
-                                    document.getElementById('mobile-user-avatar').innerText = init;
+                                    const mobAvatarEl2 = document.getElementById('mobile-user-avatar');
+                                    if (currentUserProfile.avatar) {
+                                        mobAvatarEl2.innerText = '';
+                                        mobAvatarEl2.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                                    } else {
+                                        mobAvatarEl2.innerText = init;
+                                        mobAvatarEl2.style.backgroundImage = 'none';
+                                    }
                                 }
 
                                 const pageMobileUserName = document.getElementById('page-mobile-user-name');
                                 if (pageMobileUserName) {
                                     pageMobileUserName.innerText = name;
                                     document.getElementById('page-mobile-user-role').innerText = role;
-                                    document.getElementById('page-mobile-user-avatar').innerText = init;
+                                    const pageAvatarEl2 = document.getElementById('page-mobile-user-avatar');
+                                    if (currentUserProfile.avatar) {
+                                        pageAvatarEl2.innerText = '';
+                                        pageAvatarEl2.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                                    } else {
+                                        pageAvatarEl2.innerText = init;
+                                        pageAvatarEl2.style.backgroundImage = 'none';
+                                    }
                                 }
 
                                 // Unlock Operator UI if applicable
