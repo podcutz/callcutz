@@ -1782,6 +1782,17 @@
             
             const mobileNav = document.getElementById('mobile-nav');
             if(mobileNav) mobileNav.classList.remove('hidden');
+
+            // PWA OFFLINE: Save user profile so it can be restored when offline
+            try {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+                if (isPWA && currentUserProfile && authUserId) {
+                    localStorage.setItem('callcutz_user_profile', JSON.stringify({
+                        ...currentUserProfile,
+                        id: authUserId
+                    }));
+                }
+            } catch(e) {}
             
             currentUserTimezone = currentUserProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
             populateTimezones();
@@ -1982,6 +1993,23 @@
                         m.meeting_participants.some(p => p.user_id === authUserId)
                     );
                 }
+            }
+
+            // PWA OFFLINE SNAPSHOT: Save latest data to localStorage so the app
+            // can render pre-loaded content when the device has no internet.
+            // Only runs in PWA standalone mode on mobile, never on desktop browser.
+            try {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+                if (isPWA) {
+                    localStorage.setItem('callcutz_offline_snapshot', JSON.stringify({
+                        teamMembers: teamMembers,
+                        dbMeetings: dbMeetings,
+                        dbAvailability: dbAvailability,
+                        savedAt: new Date().toISOString()
+                    }));
+                }
+            } catch(e) {
+                // Silently ignore storage errors (e.g. private mode or full storage)
             }
         }
 
@@ -2331,6 +2359,101 @@
                     window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
                 }
             } else {
+                // PWA OFFLINE CHECK: If running as installed PWA with no internet,
+                // load the last snapshot instead of showing the login screen.
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+                const isOffline = !navigator.onLine;
+
+                if (isPWA && isOffline) {
+                    try {
+                        const snapshot = localStorage.getItem('callcutz_offline_snapshot');
+                        if (snapshot) {
+                            const parsed = JSON.parse(snapshot);
+                            teamMembers = parsed.teamMembers || [];
+                            dbMeetings = parsed.dbMeetings || [];
+                            dbAvailability = parsed.dbAvailability || [];
+
+                            // Restore the user profile from localStorage
+                            const savedProfile = localStorage.getItem('callcutz_user_profile');
+                            if (savedProfile) {
+                                currentUserProfile = JSON.parse(savedProfile);
+                                authUserId = currentUserProfile.id || null;
+                                currentUserTimezone = currentUserProfile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+                                // Show the app shell
+                                document.getElementById('page-login').classList.add('hidden');
+                                document.getElementById('page-login').classList.remove('flex');
+                                document.getElementById('sidebar').classList.add('hidden');
+                                document.getElementById('sidebar').classList.add('md:flex');
+                                document.getElementById('mainContent').classList.remove('hidden');
+
+                                const mobileNav = document.getElementById('mobile-nav');
+                                if (mobileNav) mobileNav.classList.remove('hidden');
+
+                                // Populate sidebar with cached user info
+                                const name = currentUserProfile.full_name || 'User';
+                                const role = currentUserProfile.role || 'Member';
+                                const firstName = name.split(' ')[0];
+                                const init = firstName.charAt(0).toUpperCase();
+
+                                document.getElementById('sidebar-user-name').innerText = name;
+                                document.getElementById('sidebar-user-role').innerText = role;
+                                document.getElementById('sidebar-user-init').innerText = init;
+
+                                const mobileUserName = document.getElementById('mobile-user-name');
+                                if (mobileUserName) {
+                                    mobileUserName.innerText = name;
+                                    document.getElementById('mobile-user-role').innerText = role;
+                                    document.getElementById('mobile-user-avatar').innerText = init;
+                                }
+
+                                const pageMobileUserName = document.getElementById('page-mobile-user-name');
+                                if (pageMobileUserName) {
+                                    pageMobileUserName.innerText = name;
+                                    document.getElementById('page-mobile-user-role').innerText = role;
+                                    document.getElementById('page-mobile-user-avatar').innerText = init;
+                                }
+
+                                // Unlock Operator UI if applicable
+                                if (currentUserProfile.account_level === 'Operator') {
+                                    const opBtn = document.getElementById('operator-panel-btn');
+                                    if (opBtn) { opBtn.classList.remove('hidden'); opBtn.classList.add('flex'); }
+                                    const mobOpBtn = document.getElementById('mobile-operator-panel-btn');
+                                    if (mobOpBtn) { mobOpBtn.classList.remove('hidden'); mobOpBtn.classList.add('flex'); }
+                                    const pageMobOpBtn = document.getElementById('page-mobile-operator-panel-btn');
+                                    if (pageMobOpBtn) { pageMobOpBtn.classList.remove('hidden'); pageMobOpBtn.classList.add('flex'); }
+                                }
+
+                                populateTimezones();
+                                initAvailability();
+                                initScheduleGallery();
+                                renderDashboard();
+
+                                const teamViewNav = document.getElementById('nav-teamview');
+                                const mobileTeamViewNav = document.getElementById('mobile-nav-teamview');
+                                const isAllowedTeamView = currentUserProfile.account_level === 'Operator';
+                                
+                                if (teamViewNav) {
+                                    if (isAllowedTeamView) { teamViewNav.classList.remove('hidden'); teamViewNav.classList.add('flex'); }
+                                    else { teamViewNav.classList.add('hidden'); }
+                                }
+                                if (mobileTeamViewNav) {
+                                    if (isAllowedTeamView) { mobileTeamViewNav.classList.remove('hidden'); mobileTeamViewNav.classList.add('flex'); }
+                                    else { mobileTeamViewNav.classList.add('hidden'); }
+                                }
+
+                                const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+                                showPage(savedPage === 'teamview' && !isAllowedTeamView ? 'dashboard' : savedPage);
+                                lucide.createIcons();
+                                return; // Stop here — don't show login screen
+                            }
+                        }
+                    } catch(e) {
+                        // Snapshot corrupted or missing — fall through to login
+                    }
+                }
+
+                // No session, not offline PWA — show login screen normally
                 const loginPage = document.getElementById('page-login');
                 loginPage.classList.remove('hidden');
                 loginPage.classList.add('flex');
