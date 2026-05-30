@@ -2319,6 +2319,17 @@
                 currentUserProfile.email = session.user.email;
                 
                 // RBAC SECURITY: Check if user has been inactivated or removed securely via RPC
+                // OFFLINE GUARD: Skip this network check entirely when running as PWA with no internet.
+                // The Supabase session is already cached locally — trust it when offline.
+                const isPWA_onload = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+                const isOffline_onload = !navigator.onLine;
+
+                if (isPWA_onload && isOffline_onload) {
+                    // Offline PWA — skip RBAC network call, trust the cached session, boot straight into the app
+                    completeLogin();
+                    return;
+                }
+
             const { data: accessData } = await supabaseClient.rpc('check_access_status', { lookup_email: session.user.email });
             if (!accessData || accessData.length === 0 || accessData[0].status !== 'Active') {
                 await supabaseClient.auth.signOut();
