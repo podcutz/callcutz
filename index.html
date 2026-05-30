@@ -81,6 +81,18 @@
             background: #222;
             border-radius: 10px;
         }
+        
+        /* Hide scrollbar completely on mobile devices */
+        @media (max-width: 767px) {
+            ::-webkit-scrollbar {
+                display: none;
+                width: 0px;
+            }
+            * {
+                -ms-overflow-style: none;  /* IE and Edge */
+                scrollbar-width: none;  /* Firefox */
+            }
+        }
 
         .tab-active {
             color: #ffffff;
@@ -588,8 +600,8 @@
     <!-- Main Content Area -->
     <main id="mainContent" class="relative content-transition h-screen flex-1 flex flex-col overflow-y-auto pb-24 md:pb-0">
      
-        <header class="p-5 pt-8 md:pt-8 md:p-8 pb-4 md:pb-6 bg-black flex flex-row justify-between items-center md:items-end relative gap-4 w-full">
-            <div class="mt-2 md:mt-0 w-full">
+        <header class="p-4 pt-4 md:pt-8 md:p-8 pb-4 md:pb-6 bg-black flex flex-row justify-between items-center md:items-end relative gap-4 w-full">
+            <div class="mt-0 md:mt-0 w-full">
                 <h1 id="page-title" class="text-4xl font-bold tracking-tighter text-white"></h1>
                 <p id="page-subtitle" class="text-[10px] text-white/40 uppercase tracking-widest mt-2 hidden"></p>
             </div>
@@ -1414,7 +1426,7 @@
                 const avatarInit = firstName.charAt(0).toUpperCase();
                 
                 title.innerHTML = `
-                    <div class="md:hidden flex items-center gap-3.5 mt-4">
+                    <div class="md:hidden flex items-center gap-3.5 mt-1">
                         <div id="dashboard-mobile-avatar" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold border border-white/10 bg-cover bg-center shrink-0 shadow-sm" ${avatarUrl ? `style="background-image: url('${avatarUrl}')"` : ''}>${avatarUrl ? '' : avatarInit}</div>
                         <div class="flex flex-col justify-center h-12">
                             <span class="text-sm text-white/60 tracking-wide font-light capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Welcome back,</span>
