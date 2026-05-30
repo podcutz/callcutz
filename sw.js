@@ -50,7 +50,6 @@ self.addEventListener('push', (event) => {
         const title = data.title || 'Callcutz';
         const options = {
             body: data.body || '',
-            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780061690/Untitled_design__2_-removebg-preview_p8g0sc.png',
             tag: data.tag || 'callcutz-notification',
             renotify: true,
@@ -87,7 +86,6 @@ self.addEventListener('message', (event) => {
         const title = event.data.title || 'Callcutz';
         const options = {
             body: event.data.body || '',
-            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: 'password-change',
             renotify: true,
