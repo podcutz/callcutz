@@ -77,10 +77,11 @@
             }
         }
 
-        /* PWA ONLY: Extend body::before 1px below safe-area to cover the OS seam line at top */
+        /* PWA ONLY: Cover the OS seam line at top — Android ignores safe-area-inset-top so we use a fixed fallback height */
         @media (display-mode: standalone) and (max-width: 767px) {
             body::before {
-                height: calc(env(safe-area-inset-top, 0px) + 1px) !important;
+                height: max(env(safe-area-inset-top, 28px), 28px) !important;
+                background: #000000 !important;
             }
         }
 
@@ -104,6 +105,10 @@
                 min-height: -webkit-fill-available;
                 margin: 0;
                 padding: 0;
+                padding-top: 0 !important;
+            }
+            html {
+                background: #000000 !important;
             }
             
             #mobile-nav {
@@ -115,7 +120,7 @@
             /* CHANGE 2: Push tab bottom border slightly lower — adjust padding-bottom value to taste */
             /* Increase padding-bottom (e.g. pb-2 = 8px, pb-3 = 12px) to move border further down */
             .pwa-tab-row {
-                padding-bottom: 6px !important; /* ← change this number to move the border up/down */
+                padding-bottom: 9px !important; /* ← change this number to move the border up/down */
             }
 
             /* CHANGE 4: Nudge nav icons upward in PWA — adjust pt/pb values to taste */
@@ -3474,7 +3479,7 @@ if (hasRealConflict) {
                 // Notify each invitee via push
                 const inviteeIds = currentBookingParticipants.map(p => p.id);
                 const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
-                sendPushNotification(inviteeIds, 'New Meeting Request', `${hostName} wants to book a meetong: ${finalTitle}`, 'meeting-request');
+                sendPushNotification(inviteeIds, 'New Meeting Request', `${hostName} is requesting a meeting: ${finalTitle}`, 'meeting-request');
                 
                 // Immediately refresh state behind the scenes for the sender
                 await fetchCoreData(false);
@@ -4331,7 +4336,7 @@ async function deleteMeeting(id, skipWebhook = false) {
                     if (hostIds.length > 0) {
                         const responderName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
                         const actionLabel = action === 'accepted' ? 'accepted' : 'declined';
-                        sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted' : 'Declined'}`, `${responderName} ${actionLabel} your meeting: ${respondedMeeting.title || 'Meeting'}`, 'meeting-response');
+                        sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted' : 'Declined'}`, `${responderName} ${actionLabel} your meeting request: ${respondedMeeting.title || 'Meeting'}`, 'meeting-response');
                     }
                 }
 
