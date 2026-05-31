@@ -300,33 +300,53 @@
             }
         }
         
-        #custom-ptr-loader {
+        /* Instagram-style PTR (PWA Only) */
+        #insta-ptr-container {
             position: fixed;
-            top: -50px;
+            top: env(safe-area-inset-top, 0px);
             left: 50%;
-            transform: translateX(-50%);
-            width: 28px;
-            height: 28px;
-            border: 1.5px solid transparent;
-            border-top-color: white;
-            border-radius: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            width: 40px;
+            height: 40px;
             z-index: 9999;
-            opacity: 0;
-            transition: opacity 0.2s, top 0.2s;
             pointer-events: none;
         }
-        .ptr-spinning {
-            animation: ptr-spin 0.6s linear infinite;
+        #insta-drag-rings {
+            position: absolute;
+            top: 0; left: 0; width: 40px; height: 40px;
+            transform: rotate(-90deg);
+            transition: opacity 0.2s ease;
         }
-        @keyframes ptr-spin {
-            0% { transform: translateX(-50%) rotate(0deg); }
-            100% { transform: translateX(-50%) rotate(360deg); }
+        .insta-ring-bg { fill: none; stroke: rgba(255,255,255,0.15); stroke-width: 3px; }
+        .insta-ring-fg { fill: none; stroke: #ffffff; stroke-width: 3px; }
+        
+        .insta-spinner-circle {
+            position: absolute;
+            top: 0; left: 0; width: 40px; height: 40px;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            background: conic-gradient(from 0deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 20%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.8) 80%, rgba(255,255,255,1) 100%);
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2.5px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2.5px));
+            animation: insta-spin 0.8s linear infinite;
         }
+        
+        .insta-is-loading #insta-drag-rings { opacity: 0; }
+        .insta-is-loading .insta-spinner-circle { opacity: 1; }
+        
+        @keyframes insta-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-black text-white font-sans min-h-screen overflow-x-hidden flex">
 
-    <div id="custom-ptr-loader" class="md:hidden"></div>
+    <div id="insta-ptr-container" class="md:hidden">
+        <svg id="insta-drag-rings" viewBox="0 0 40 40">
+            <circle class="insta-ring-bg" cx="20" cy="20" r="18.5"></circle>
+            <circle class="insta-ring-fg" cx="20" cy="20" r="18.5"></circle>
+        </svg>
+        <div class="insta-spinner-circle" id="insta-spinner"></div>
+    </div>
 
     <!-- PWA Offline Toast -->
     <div id="pwa-offline-toast" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[99999] px-5 py-3 rounded-2xl bg-black/70 backdrop-blur-md shadow-2xl pointer-events-none" style="border: 1px solid rgba(255,255,255,0.08);">
@@ -5484,31 +5504,52 @@ async function deleteMeeting(id, skipWebhook = false) {
             });
         }
 
-        // Custom Instagram-style Pull-to-Refresh (Mobile Only)
+        // Custom Instagram-style Pull-to-Refresh (Mobile PWA Only)
         let ptrStartY = 0;
         let ptrCurrentY = 0;
         let ptrIsPulling = false;
-        const ptrLoader = document.getElementById('custom-ptr-loader');
+        const ptrContainer = document.getElementById('insta-ptr-container');
+        const fgRing = ptrContainer.querySelector('.insta-ring-fg');
         const mainScrollArea = document.getElementById('mainContent');
+        
+        const radius = 18.5;
+        const circumference = 2 * Math.PI * radius; 
+        fgRing.style.strokeDasharray = circumference;
+        fgRing.style.strokeDashoffset = 0; 
+
+        function isModalOpen() {
+            const modals = [
+                'callDetailsModal', 'add-guest-modal', 'control-panel-modal', 
+                'filter-modal', 'page-login', 'settings-modal', 'modal-overlay'
+            ];
+            for (let id of modals) {
+                const el = document.getElementById(id);
+                if (el && !el.classList.contains('hidden')) return true;
+            }
+            // Strict check: if teamview side panel is open, block drag refresh
+            const sideList = document.getElementById('call-sidelist');
+            if (sideList && !sideList.classList.contains('translate-x-full') && window.innerWidth < 768) return true;
+            return false;
+        }
 
         document.addEventListener('touchstart', (e) => {
-            if (window.innerWidth >= 768) return; // Only run on mobile
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+            if (!isPWA || window.innerWidth >= 768) return;
             
-            // INTELLIGENT EXCLUSION: Find if touch is inside a nested list. We explicitly exclude #mainContent from being treated as a nested list.
+            // Block refresh if a modal or right-peek menu is currently opened
+            if (isModalOpen()) return;
+            
             const nestedList = e.target.closest('#tz-list, #b-time-slots, .time-dropdown-menu, #filter-modal-list, #cd-participants-list, #call-log-container, .custom-scrollbar, .overflow-y-auto:not(#mainContent)');
-            
-            // If inside a nested list and the list is scrolled down, let native scrolling handle it. No PTR.
-            if (nestedList && nestedList.scrollTop > 0) {
-                return;
-            }
+            if (nestedList && nestedList.scrollTop > 0) return;
 
-            // Only initialize PTR if the main app screen is fully scrolled to the top
             if (mainScrollArea.scrollTop <= 0) {
                 ptrStartY = e.touches[0].clientY;
                 ptrCurrentY = ptrStartY;
                 ptrIsPulling = true;
-                ptrLoader.classList.remove('ptr-spinning');
-                ptrLoader.style.transition = 'opacity 0.2s, top 0.2s'; // Ensure smooth snap transitions
+                ptrContainer.classList.remove('insta-is-loading');
+                ptrContainer.style.transition = 'none';
+                fgRing.style.transition = 'none';
+                mainScrollArea.style.transition = 'none';
             }
         }, { passive: true });
 
@@ -5516,45 +5557,59 @@ async function deleteMeeting(id, skipWebhook = false) {
             if (!ptrIsPulling || window.innerWidth >= 768) return;
             
             ptrCurrentY = e.touches[0].clientY;
-            let pullDistance = ptrCurrentY - ptrStartY;
+            let deltaY = ptrCurrentY - ptrStartY;
 
-            // If user starts scrolling up (thumb goes up, pulling content down into view), cancel PTR immediately
-            if (pullDistance < 0) {
+            // Finger went up, cancel
+            if (deltaY < 0) {
                 ptrIsPulling = false;
+                mainScrollArea.style.transform = 'translateY(0px)';
+                mainScrollArea.style.borderTop = 'none';
+                mainScrollArea.style.borderTopLeftRadius = '0px';
+                mainScrollArea.style.borderTopRightRadius = '0px';
                 return;
             }
 
-            // If pulling down (thumb goes down) and main screen is at absolute top, visually activate PTR
-            if (pullDistance > 0 && mainScrollArea.scrollTop <= 0) {
-                if (e.cancelable) e.preventDefault(); // Extra safety to stop Chrome blue bar
+            // Finger pulling down
+            if (deltaY > 0 && mainScrollArea.scrollTop <= 0) {
+                if (e.cancelable) e.preventDefault(); 
                 
-                let visualDistance = Math.min(pullDistance * 0.4, 60);
-                ptrLoader.style.transition = 'none'; // Disable transition during drag for 1-to-1 finger tracking
-                ptrLoader.style.top = `${visualDistance - 20}px`;
-                ptrLoader.style.opacity = Math.min(visualDistance / 40, 1);
-                ptrLoader.style.transform = `translateX(-50%) rotate(${pullDistance * 2}deg)`;
+                let progress = Math.min(deltaY / 150, 1); 
+                let contentTranslateY = Math.min(deltaY * 0.4, 60); 
+                let spinnerTranslateY = Math.max(-60 + (deltaY * 0.6), 20); 
+
+                // Drag the app shell down
+                mainScrollArea.style.transform = `translateY(${contentTranslateY}px)`;
+                
+                // Gradually expose the top border
+                if (contentTranslateY > 5) {
+                    mainScrollArea.style.borderTop = '1px solid rgba(255,255,255,0.15)';
+                    mainScrollArea.style.borderTopLeftRadius = '16px';
+                    mainScrollArea.style.borderTopRightRadius = '16px';
+                }
+
+                ptrContainer.style.transform = `translateX(-50%) translateY(${spinnerTranslateY}px)`;
+                fgRing.style.strokeDashoffset = -(progress * circumference);
             }
         }, { passive: false });
 
         document.addEventListener('touchend', () => {
             if (!ptrIsPulling || window.innerWidth >= 768) return;
             ptrIsPulling = false;
-            let pullDistance = ptrCurrentY - ptrStartY;
+            let deltaY = ptrCurrentY - ptrStartY;
             
-            ptrLoader.style.transition = 'opacity 0.3s, top 0.3s'; // Restore smooth transitions for snap back
+            ptrContainer.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            fgRing.style.transition = 'stroke-dashoffset 0.3s ease';
+            mainScrollArea.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.3s, border-top 0.3s';
 
-            if (pullDistance > 90 && mainScrollArea.scrollTop <= 0) {
-                // Pulled far enough, trigger SOFT NATIVE REFRESH
-                ptrLoader.style.top = '30px';
-                ptrLoader.style.transform = 'translateX(-50%)';
-                ptrLoader.classList.add('ptr-spinning');
+            if (deltaY > 90 && mainScrollArea.scrollTop <= 0) {
+                // Success: Lock into Loading State
+                ptrContainer.classList.add('insta-is-loading');
+                ptrContainer.style.transform = 'translateX(-50%) translateY(30px)';
+                mainScrollArea.style.transform = 'translateY(50px)'; 
                 
-                // Perform silent data fetch instead of hard browser reload
                 (async () => {
                     try {
-                        await fetchCoreData(false); // Fetch new DB data silently
-                        
-                        // Re-render the active view smoothly based on where the user is
+                        await fetchCoreData(false);
                         const activePage = localStorage.getItem('schedulr_active_page') || 'dashboard';
                         if (activePage === 'dashboard') renderDashboard();
                         if (activePage === 'availability') initAvailability();
@@ -5564,24 +5619,42 @@ async function deleteMeeting(id, skipWebhook = false) {
                                 initScheduleGallery();
                             } else {
                                 const selectedDateEl = document.querySelector('.booking-day.selected');
-                                if (selectedDateEl) selectedDateEl.click(); // Refresh available slots silently
+                                if (selectedDateEl) selectedDateEl.click();
                             }
                         }
                     } catch (err) {
                         console.error("Soft refresh failed:", err);
                     } finally {
-                        // Hide loader gracefully after a minimum spin duration for good UX
                         setTimeout(() => {
-                            ptrLoader.style.top = '-50px';
-                            ptrLoader.style.opacity = '0';
-                            setTimeout(() => ptrLoader.classList.remove('ptr-spinning'), 300);
+                            // Retreat sequence
+                            ptrContainer.classList.remove('insta-is-loading');
+                            ptrContainer.style.transition = 'transform 0.4s ease-in-out';
+                            ptrContainer.style.transform = 'translateX(-50%) translateY(-80px)'; 
+                            
+                            mainScrollArea.style.transform = 'translateY(0px)';
+                            mainScrollArea.style.borderTop = 'none';
+                            mainScrollArea.style.borderTopLeftRadius = '0px';
+                            mainScrollArea.style.borderTopRightRadius = '0px';
+
+                            setTimeout(() => {
+                                fgRing.style.transition = 'none';
+                                fgRing.style.strokeDashoffset = 0;
+                            }, 400);
                         }, 600);
                     }
                 })();
             } else {
-                // Snap back silently if not pulled far enough
-                ptrLoader.style.top = '-50px';
-                ptrLoader.style.opacity = '0';
+                // Not dragged far enough, snap back instantly
+                ptrContainer.style.transform = 'translateX(-50%) translateY(-80px)';
+                mainScrollArea.style.transform = 'translateY(0px)';
+                mainScrollArea.style.borderTop = 'none';
+                mainScrollArea.style.borderTopLeftRadius = '0px';
+                mainScrollArea.style.borderTopRightRadius = '0px';
+                
+                setTimeout(() => {
+                    fgRing.style.transition = 'none';
+                    fgRing.style.strokeDashoffset = 0;
+                }, 300);
             }
         });
     </script>
