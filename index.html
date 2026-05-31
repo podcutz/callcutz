@@ -77,11 +77,10 @@
             }
         }
 
-        /* PWA ONLY: Cover the OS seam line at top — Android ignores safe-area-inset-top so we use a fixed fallback height */
+        /* PWA ONLY: Extend body::before 1px below safe-area to cover the OS seam line at top */
         @media (display-mode: standalone) and (max-width: 767px) {
             body::before {
-                height: max(env(safe-area-inset-top, 28px), 28px) !important;
-                background: #000000 !important;
+                height: calc(env(safe-area-inset-top, 0px) + 1px) !important;
             }
         }
 
@@ -105,10 +104,6 @@
                 min-height: -webkit-fill-available;
                 margin: 0;
                 padding: 0;
-                padding-top: 0 !important;
-            }
-            html {
-                background: #000000 !important;
             }
             
             #mobile-nav {
