@@ -4001,16 +4001,16 @@ function renderDashboard() {
             else pastContainer.innerHTML = pasts.map(p => {
                 const jsonStr = encodeURIComponent(JSON.stringify(p.fullRecord));
                 return `
-                <div onclick="if(window.innerWidth < 768) openDetailsModal('${p.id}')" class="relative flex items-center justify-between p-3.5 md:p-4 bg-white/[0.02] md:bg-white/5 rounded-2xl border border-transparent md:border-white/5 opacity-40 grayscale transition-all hover:opacity-100 hover:grayscale-0 group gap-2 cursor-pointer md:cursor-auto z-0 overflow-hidden md:overflow-visible">
+                <div onclick="if(window.innerWidth < 768) openDetailsModal('${p.id}')" class="relative flex items-center justify-between p-3.5 md:p-4 bg-white/[0.02] md:bg-white/5 rounded-2xl border border-transparent md:border-white/5 opacity-70 transition-all hover:opacity-100 group gap-2 cursor-pointer md:cursor-auto z-0 overflow-hidden md:overflow-visible">
                     <div class="absolute inset-0 rounded-2xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
                     <div class="flex items-center gap-3 md:space-x-4 w-[90%] md:w-auto overflow-hidden">
-                        <div class="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-[#111] md:bg-zinc-800 text-white/40 border border-white/10 md:border-white/40 flex flex-col shrink-0 items-center justify-center font-black shadow-sm">
+                        <div class="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-[#111] md:bg-zinc-800 text-white/60 border border-white/10 md:border-white/40 flex flex-col shrink-0 items-center justify-center font-black shadow-sm">
                             <span class="text-[8px] md:text-[8px] uppercase leading-none mt-0.5">${p.month}</span>
                             <span class="text-sm md:text-sm leading-none">${p.date}</span>
                         </div>
                         <div class="flex flex-col justify-center min-w-0 flex-1 pr-2">
-                            <h4 class="font-medium text-xs md:text-sm text-white/40 capitalize tracking-wide group-hover:text-white block truncate w-full max-w-[140px] md:max-w-none">${p.title.length > 34 ? p.title.substring(0, 34) + '...' : p.title}</h4>
-                            <p class="text-[8px] md:text-[10px] text-white/20 uppercase tracking-widest font-medium leading-tight group-hover:text-white/40 mt-0.5">${p.time}</p>
+                            <h4 class="font-medium text-xs md:text-sm text-white/70 capitalize tracking-wide group-hover:text-white block truncate w-full max-w-[140px] md:max-w-none">${p.title.length > 34 ? p.title.substring(0, 34) + '...' : p.title}</h4>
+                            <p class="text-[8px] md:text-[10px] text-white/40 uppercase tracking-widest font-medium leading-tight group-hover:text-white/60 mt-0.5">${p.time}</p>
                         </div>
                     </div>
                     <button onclick="event.stopPropagation(); openDetailsModal('${p.id}')" class="hidden md:block bg-black text-white border border-white/20 text-[8px] px-2.5 py-1.5 rounded-lg font-semibold capitalize tracking-widest hover:bg-white/10 transition-colors">Details</button>
@@ -4028,6 +4028,12 @@ function renderDashboard() {
             dbMeetings.forEach(m => {
                 const startMs = new Date(m.start_time_utc).getTime();
                 const endMs = new Date(m.end_time_utc).getTime();
+                const joinShowMs = startMs - (15 * 60 * 1000); // Exactly 15 minutes before start
+                
+                // Schedule re-render exactly when the Join button should appear
+                if (joinShowMs > rightNow && joinShowMs - rightNow <= 86400000) {
+                    window.transitionTimeouts.push(setTimeout(renderDashboard, joinShowMs - rightNow + 100));
+                }
                 // Schedule re-render exactly when a meeting starts or ends 
                 if (startMs > rightNow && startMs - rightNow <= 86400000) {
                     window.transitionTimeouts.push(setTimeout(renderDashboard, startMs - rightNow + 100)); 
@@ -5529,8 +5535,12 @@ async function deleteMeeting(id, skipWebhook = false) {
                 const el = document.getElementById(id);
                 if (el && !el.classList.contains('hidden')) return true;
             }
+            // Strict check: if teamview side panel is open, block drag refresh
             const sideList = document.getElementById('call-sidelist');
             if (sideList && !sideList.classList.contains('translate-x-full') && window.innerWidth < 768) return true;
+            // Strict check: if booking interface (schedule page date selection) is open, block drag refresh
+            const bookingInterface = document.getElementById('booking-interface');
+            if (bookingInterface && !bookingInterface.classList.contains('hidden')) return true;
             return false;
         }
 
