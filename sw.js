@@ -1,6 +1,5 @@
-const CACHE_NAME = 'callcutz-v16';
+const CACHE_NAME = 'callcutz-v17';
 
-// All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
     './',
     './index.html',
@@ -21,9 +20,6 @@ const PRECACHE_URLS = [
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1772612374/Untitled_design__1_-removebg-preview_ux1end.png'
 ];
 
-// Install: pre-cache the app shell and all critical resources
-// FIX: Use fetch() + cache.put() instead of cache.add() so opaque CDN responses
-// (like Tailwind, Lucide) are force-stored even when they redirect or lack CORS headers.
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
@@ -31,15 +27,10 @@ self.addEventListener('install', (event) => {
                 PRECACHE_URLS.map(async (url) => {
                     try {
                         const response = await fetch(url, { mode: 'no-cors' });
-                        // Store both real (status 200) and opaque (status 0) responses.
-                        // Opaque responses are from cross-origin CDNs — they work fine offline
-                        // when served from cache even though their status appears as 0.
                         if (response && (response.status === 200 || response.type === 'opaque')) {
                             await cache.put(url, response);
                         }
-                    } catch (e) {
-                        // Silently ignore — network may be unavailable during install
-                    }
+                    } catch (e) {}
                 })
             );
             return results;
@@ -47,7 +38,6 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// Activate: delete old caches
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
@@ -60,7 +50,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// PUSH NOTIFICATIONS: Handle incoming server push events
+// PUSH NOTIFICATIONS
 self.addEventListener('push', (event) => {
     if (!event.data) return;
     try {
@@ -68,22 +58,7 @@ self.addEventListener('push', (event) => {
         const title = data.title || 'Callcutz';
         const options = {
             body: data.body || '',
-            icon: '// PUSH NOTIFICATIONS: Handle incoming server push events
-self.addEventListener('push', (event) => {
-    if (!event.data) return;
-    try {
-        const data = event.data.json();
-        const title = data.title || 'Callcutz';
-        const options = {
-            body: data.body || '',
-            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
-            tag: data.tag || 'callcutz-notification',
-            renotify: true,
-            vibrate: [200, 100, 200],
-            silent: false,
-            data: { url: self.location.origin }
-        };,
+            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: data.tag || 'callcutz-notification',
             renotify: true,
@@ -121,7 +96,7 @@ self.addEventListener('message', (event) => {
         const title = event.data.title || 'Callcutz';
         const options = {
             body: event.data.body || '',
-            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='',
+            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
             tag: 'password-change',
             renotify: true,
@@ -136,15 +111,11 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Never intercept Supabase API calls — these must always go to the network
     if (url.hostname.includes('supabase.co') || url.hostname.includes('google.com')) {
         return;
     }
 
-    // CRITICAL: Never intercept PWA icon fetches — Chrome needs to read their real pixel
-    // dimensions to correctly assign 192x192 for home screen and 512x512 for splash screen.
-    // Intercepting with no-cors returns opaque responses Chrome cannot measure, causing it
-    // to fall back to using the 192 for both. Let these go straight to the network unblocked.
+    // Never intercept PWA icon fetches — Chrome needs to read real pixel dimensions
     const iconUrls = [
         'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
         'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png',
@@ -155,8 +126,6 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // CRITICAL FIX: For HTML requests (the app shell), force network check bypassing HTTP cache.
-    // This ensures users always get your newest deployed code without clearing browser cache.
     if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('index.html')) {
         event.respondWith(
             fetch(event.request, { cache: 'no-store' })
@@ -168,7 +137,6 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch(() => {
-                    // Network failed (Offline) — serve from cache
                     return caches.match(event.request).then((cached) => {
                         return cached || caches.match('./index.html');
                     });
@@ -177,17 +145,10 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For everything else (scripts, styles, images, CDNs):
-    // FIX: Stale-While-Revalidate with guaranteed fallback.
-    // The key fix: always return cachedResponse immediately if available,
-    // and explicitly return the network promise only when there is NO cache.
-    // Previously, the networkFetch promise could resolve to undefined on failure
-    // causing the browser to receive nothing even when a cached version existed.
     event.respondWith(
         caches.open(CACHE_NAME).then(async (cache) => {
             const cachedResponse = await cache.match(event.request);
 
-            // Always kick off a background network refresh to keep cache fresh
             const networkFetch = fetch(event.request, { mode: 'no-cors' })
                 .then((response) => {
                     if (response && (response.status === 200 || response.type === 'opaque')) {
@@ -195,14 +156,12 @@ self.addEventListener('fetch', (event) => {
                     }
                     return response;
                 })
-                .catch(() => null); // FIX: Return null instead of undefined/reject on network failure
+                .catch(() => null);
 
-            // If we have a cached version, return it INSTANTLY and revalidate in background
             if (cachedResponse) {
                 return cachedResponse;
             }
 
-            // No cache — must wait for network (first load or cache miss)
             const networkResponse = await networkFetch;
             return networkResponse || new Response('', { status: 408, statusText: 'Network unavailable' });
         })
