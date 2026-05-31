@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v12';
+const CACHE_NAME = 'callcutz-v13';
 
 // All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
@@ -66,7 +66,22 @@ self.addEventListener('push', (event) => {
         const title = data.title || 'Callcutz';
         const options = {
             body: data.body || '',
-            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+            icon: '// PUSH NOTIFICATIONS: Handle incoming server push events
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+    try {
+        const data = event.data.json();
+        const title = data.title || 'Callcutz';
+        const options = {
+            body: data.body || '',
+            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            tag: data.tag || 'callcutz-notification',
+            renotify: true,
+            vibrate: [200, 100, 200],
+            silent: false,
+            data: { url: self.location.origin }
+        };,
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: data.tag || 'callcutz-notification',
             renotify: true,
@@ -104,13 +119,12 @@ self.addEventListener('message', (event) => {
         const title = event.data.title || 'Callcutz';
         const options = {
             body: event.data.body || '',
-            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
+            icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
             tag: 'password-change',
             renotify: true,
             vibrate: [200, 100, 200],
-            silent: false,
-            sound: 'default'
+            silent: false
         };
         self.registration.showNotification(title, options);
     }
@@ -122,6 +136,18 @@ self.addEventListener('fetch', (event) => {
 
     // Never intercept Supabase API calls — these must always go to the network
     if (url.hostname.includes('supabase.co') || url.hostname.includes('google.com')) {
+        return;
+    }
+
+    // CRITICAL: Never intercept PWA icon fetches — Chrome needs to read their real pixel
+    // dimensions to correctly assign 192x192 for home screen and 512x512 for splash screen.
+    // Intercepting with no-cors returns opaque responses Chrome cannot measure, causing it
+    // to fall back to using the 192 for both. Let these go straight to the network unblocked.
+    const iconUrls = [
+        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png'
+    ];
+    if (iconUrls.some(iconUrl => event.request.url === iconUrl)) {
         return;
     }
 
