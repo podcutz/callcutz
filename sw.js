@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v15';
+const CACHE_NAME = 'callcutz-v16';
 
 // All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
@@ -148,7 +148,8 @@ self.addEventListener('fetch', (event) => {
     const iconUrls = [
         'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
         'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png',
-        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png'
+        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
+        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png'
     ];
     if (iconUrls.some(iconUrl => event.request.url === iconUrl)) {
         return;
