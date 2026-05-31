@@ -7,6 +7,15 @@
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait",
+  "display_override": ["standalone"],
+  "screenshots": [
+    {
+      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
   "icons": [
     {
       "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png",
