@@ -4,20 +4,19 @@
   "description": "Team Scheduling App",
   "start_url": "./",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait",
   "icons": [
     {
       "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png",
-      "sizes": "192x192",
+      "sizes": "86x86",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
       "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png",
-      "sizes": "256x256",
+      "sizes": "86x86",
       "type": "image/png",
       "purpose": "any maskable"
     }
