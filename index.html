@@ -303,17 +303,17 @@
         /* Instagram-style PTR (PWA Only) */
         #insta-ptr-container {
             position: fixed;
-            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            top: calc(env(safe-area-inset-top, 0px) + 18px);
             left: 50%;
             transform: translateX(-50%);
-            width: 28px;
-            height: 28px;
+            width: 34px;
+            height: 34px;
             z-index: 0;
             pointer-events: none;
         }
         #insta-drag-rings {
             position: absolute;
-            top: 0; left: 0; width: 28px; height: 28px;
+            top: 0; left: 0; width: 34px; height: 34px;
             transform: rotate(-90deg);
             transition: opacity 0.2s ease;
         }
@@ -322,7 +322,7 @@
         
         .insta-spinner-circle {
             position: absolute;
-            top: 0; left: 0; width: 28px; height: 28px;
+            top: 0; left: 0; width: 34px; height: 34px;
             border-radius: 50%;
             opacity: 0;
             transition: opacity 0.2s ease;
@@ -341,9 +341,9 @@
 <body class="bg-black text-white font-sans min-h-screen overflow-x-hidden flex">
 
     <div id="insta-ptr-container" class="md:hidden">
-        <svg id="insta-drag-rings" viewBox="0 0 28 28">
-            <circle class="insta-ring-bg" cx="14" cy="14" r="12.5"></circle>
-            <circle class="insta-ring-fg" cx="14" cy="14" r="12.5"></circle>
+        <svg id="insta-drag-rings" viewBox="0 0 34 34">
+            <circle class="insta-ring-bg" cx="17" cy="17" r="15"></circle>
+            <circle class="insta-ring-fg" cx="17" cy="17" r="15"></circle>
         </svg>
         <div class="insta-spinner-circle" id="insta-spinner"></div>
     </div>
@@ -5509,11 +5509,13 @@ async function deleteMeeting(id, skipWebhook = false) {
         let ptrCurrentY = 0;
         let ptrIsPulling = false;
         let ptrIsReadyToRefresh = false;
+        let ptrIsLoading = false; 
+        let ptrAbortFlag = false; 
         const ptrContainer = document.getElementById('insta-ptr-container');
         const fgRing = ptrContainer.querySelector('.insta-ring-fg');
         const mainScrollArea = document.getElementById('mainContent');
         
-        const radius = 12.5;
+        const radius = 15; 
         const circumference = 2 * Math.PI * radius; 
         fgRing.style.strokeDasharray = circumference;
         fgRing.style.strokeDashoffset = 0; 
@@ -5527,7 +5529,6 @@ async function deleteMeeting(id, skipWebhook = false) {
                 const el = document.getElementById(id);
                 if (el && !el.classList.contains('hidden')) return true;
             }
-            // Strict check: if teamview side panel is open, block drag refresh
             const sideList = document.getElementById('call-sidelist');
             if (sideList && !sideList.classList.contains('translate-x-full') && window.innerWidth < 768) return true;
             return false;
@@ -5536,18 +5537,21 @@ async function deleteMeeting(id, skipWebhook = false) {
         document.addEventListener('touchstart', (e) => {
             const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
             if (!isPWA || window.innerWidth >= 768) return;
-            
-            // Block refresh if a modal or right-peek menu is currently opened
             if (isModalOpen()) return;
             
             const nestedList = e.target.closest('#tz-list, #b-time-slots, .time-dropdown-menu, #filter-modal-list, #cd-participants-list, #call-log-container, .custom-scrollbar, .overflow-y-auto:not(#mainContent)');
             if (nestedList && nestedList.scrollTop > 0) return;
 
+            ptrStartY = e.touches[0].clientY;
+            ptrCurrentY = ptrStartY;
+
+            // If we are actively spinning and user touches, we prepare to potentially abort if they swipe up
+            if (ptrIsLoading) return;
+
             if (mainScrollArea.scrollTop <= 0) {
-                ptrStartY = e.touches[0].clientY;
-                ptrCurrentY = ptrStartY;
                 ptrIsPulling = true;
                 ptrIsReadyToRefresh = false;
+                ptrAbortFlag = false;
                 
                 ptrContainer.classList.remove('insta-is-loading');
                 fgRing.style.transition = 'none';
@@ -5557,12 +5561,30 @@ async function deleteMeeting(id, skipWebhook = false) {
         }, { passive: true });
 
         document.addEventListener('touchmove', (e) => {
-            if (!ptrIsPulling || window.innerWidth >= 768) return;
+            if (window.innerWidth >= 768) return;
             
             ptrCurrentY = e.touches[0].clientY;
             let deltaY = ptrCurrentY - ptrStartY;
 
-            // Finger went up, cancel
+            // ABORT LOGIC: If currently spinning, and user aggressively swipes up, instantly cancel the UI
+            if (ptrIsLoading) {
+                if (deltaY < -15) { 
+                    ptrAbortFlag = true;
+                    ptrIsLoading = false;
+                    
+                    ptrContainer.classList.remove('insta-is-loading');
+                    mainScrollArea.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), border-radius 0.4s, border-top 0.4s';
+                    mainScrollArea.style.transform = 'translateY(0px)';
+                    mainScrollArea.style.borderTop = 'none';
+                    mainScrollArea.style.borderTopLeftRadius = '0px';
+                    mainScrollArea.style.borderTopRightRadius = '0px';
+                }
+                return;
+            }
+
+            if (!ptrIsPulling) return;
+
+            // Finger went up before triggering, cancel
             if (deltaY < 0) {
                 ptrIsPulling = false;
                 ptrIsReadyToRefresh = false;
@@ -5573,29 +5595,27 @@ async function deleteMeeting(id, skipWebhook = false) {
                 return;
             }
 
-            // Finger pulling down
+            // Finger pulling down (Apply Exponential Rubber-Band Physics)
             if (deltaY > 0 && mainScrollArea.scrollTop <= 0) {
                 if (e.cancelable) e.preventDefault(); 
                 
-                let pullResistance = 120; // Exact distance required to trigger refresh
+                let pullResistance = 120; 
                 let progress = Math.min(deltaY / pullResistance, 1); 
-                let contentTranslateY = Math.min(deltaY * 0.45, 60); 
+                
+                // Exponential friction: The further you pull, the stiffer the page becomes.
+                // It allows deep stretches but gracefully caps the maximum physical displacement.
+                let contentTranslateY = 320 * (1 - Math.exp(-deltaY / 250));
 
-                // Drag the app shell down (loader stays fixed behind it)
                 mainScrollArea.style.transform = `translateY(${contentTranslateY}px)`;
                 
-                // Gradually expose the top border
                 if (contentTranslateY > 5) {
                     mainScrollArea.style.borderTop = '1px solid rgba(255,255,255,0.15)';
                     mainScrollArea.style.borderTopLeftRadius = '16px';
                     mainScrollArea.style.borderTopRightRadius = '16px';
                 }
 
-                // If not locked into refresh state, draw the ring
                 if (!ptrIsReadyToRefresh) {
                     fgRing.style.strokeDashoffset = -(progress * circumference);
-                    
-                    // Trigger condition: Ring is completely erased
                     if (progress >= 1) {
                         ptrIsReadyToRefresh = true;
                         ptrContainer.classList.add('insta-is-loading');
@@ -5605,19 +5625,29 @@ async function deleteMeeting(id, skipWebhook = false) {
         }, { passive: false });
 
         document.addEventListener('touchend', () => {
-            if (!ptrIsPulling || window.innerWidth >= 768) return;
+            if (window.innerWidth >= 768) return;
+            
+            if (ptrIsLoading) return; 
+            if (!ptrIsPulling) return;
+            
             ptrIsPulling = false;
             
             fgRing.style.transition = 'stroke-dashoffset 0.3s ease';
-            mainScrollArea.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.3s, border-top 0.3s';
+            // Spring bounce-back curves
+            mainScrollArea.style.transition = 'transform 0.5s cubic-bezier(0.28, 1.4, 0.45, 1), border-radius 0.3s, border-top 0.3s';
 
             if (ptrIsReadyToRefresh) {
-                // Success: Locked into Loading State
-                mainScrollArea.style.transform = 'translateY(60px)'; // Hold page down while loading
+                ptrIsLoading = true;
+                
+                // Spring elegantly to the fixed reading height
+                mainScrollArea.style.transform = 'translateY(70px)'; 
                 
                 (async () => {
                     try {
                         await fetchCoreData(false);
+                        
+                        if (ptrAbortFlag) return; // Prevent jarring UI shifts if user swiped up mid-load
+                        
                         const activePage = localStorage.getItem('schedulr_active_page') || 'dashboard';
                         if (activePage === 'dashboard') renderDashboard();
                         if (activePage === 'availability') initAvailability();
@@ -5633,26 +5663,28 @@ async function deleteMeeting(id, skipWebhook = false) {
                     } catch (err) {
                         console.error("Soft refresh failed:", err);
                     } finally {
-                        setTimeout(() => {
-                            // Retreat sequence: slide page back up
-                            ptrIsReadyToRefresh = false;
-                            ptrContainer.classList.remove('insta-is-loading');
-                            
-                            mainScrollArea.style.transform = 'translateY(0px)';
-                            mainScrollArea.style.borderTop = 'none';
-                            mainScrollArea.style.borderTopLeftRadius = '0px';
-                            mainScrollArea.style.borderTopRightRadius = '0px';
-
-                            // Reset the ring drawing after it is hidden behind the page
+                        if (!ptrAbortFlag) {
                             setTimeout(() => {
-                                fgRing.style.transition = 'none';
-                                fgRing.style.strokeDashoffset = 0;
-                            }, 300);
-                        }, 600);
+                                ptrIsLoading = false;
+                                ptrIsReadyToRefresh = false;
+                                ptrContainer.classList.remove('insta-is-loading');
+                                
+                                // Smooth glide back up
+                                mainScrollArea.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), border-radius 0.4s, border-top 0.4s';
+                                mainScrollArea.style.transform = 'translateY(0px)';
+                                mainScrollArea.style.borderTop = 'none';
+                                mainScrollArea.style.borderTopLeftRadius = '0px';
+                                mainScrollArea.style.borderTopRightRadius = '0px';
+
+                                setTimeout(() => {
+                                    fgRing.style.transition = 'none';
+                                    fgRing.style.strokeDashoffset = 0;
+                                }, 300);
+                            }, 500); 
+                        }
                     }
                 })();
             } else {
-                // Not dragged far enough, snap page back instantly
                 mainScrollArea.style.transform = 'translateY(0px)';
                 mainScrollArea.style.borderTop = 'none';
                 mainScrollArea.style.borderTopLeftRadius = '0px';
