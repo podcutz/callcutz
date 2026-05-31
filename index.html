@@ -77,11 +77,10 @@
             }
         }
 
-        /* PWA ONLY: Remove any divider line between status bar overlay and header */
+        /* PWA ONLY: Extend body::before 1px below safe-area to cover the OS seam line at top */
         @media (display-mode: standalone) and (max-width: 767px) {
-            header {
-                border-top: none !important;
-                box-shadow: none !important;
+            body::before {
+                height: calc(env(safe-area-inset-top, 0px) + 1px) !important;
             }
         }
 
@@ -109,16 +108,8 @@
             
             #mobile-nav {
                 background: #000000 !important; /* Force pure black to blend transparently with OS bar */
-                border-top: none !important; /* CHANGE 3: Remove the thin line between status bar and app top */
+                border-top: 1px solid rgba(255,255,255,0.05) !important; /* Subtle separator above nav bar */
                 box-shadow: none !important;
-            }
-
-            /* CHANGE 1: Remove inner scroll on dashboard tab content in PWA */
-            .pwa-dashboard-content {
-                height: auto !important;
-                max-height: none !important;
-                overflow-y: visible !important;
-                overflow-x: hidden !important;
             }
 
             /* CHANGE 2: Push tab bottom border slightly lower — adjust padding-bottom value to taste */
