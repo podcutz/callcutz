@@ -4,6 +4,7 @@
   "description": "Team Scheduling App",
   "start_url": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait",
