@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v6';
+const CACHE_NAME = 'callcutz-v7';
 
 // All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
@@ -132,19 +132,20 @@ self.addEventListener('fetch', (event) => {
     // For everything else (images, CDNs): Use 'Stale-While-Revalidate' for instant loading,
     // while updating the cache in the background for next time.
     event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            const networkFetch = fetch(event.request).then((response) => {
-                if (response && response.status === 200) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-                }
-                return response;
-            }).catch(() => {
-                // Ignore network failures for assets since we have cache fallback
-            });
+            caches.match(event.request).then((cachedResponse) => {
+                const networkFetch = fetch(event.request).then((response) => {
+                    // FIX: Allow caching of opaque responses (status 0) from third-party CDNs so Tailwind works offline
+                    if (response && (response.status === 200 || response.type === 'opaque')) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+                    }
+                    return response;
+                }).catch(() => {
+                    // Ignore network failures for assets since we have cache fallback
+                });
 
-            // Return cached response instantly if available, otherwise wait for network
-            return cachedResponse || networkFetch;
-        })
-    );
+                // Return cached response instantly if available, otherwise wait for network
+                return cachedResponse || networkFetch;
+            })
+        );
 });
