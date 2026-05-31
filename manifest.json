@@ -10,7 +10,7 @@
   "display_override": ["standalone"],
   "screenshots": [
     {
-      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png",
+      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow"
@@ -18,7 +18,7 @@
   ],
   "icons": [
     {
-      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png",
+      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
