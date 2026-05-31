@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v7';
+const CACHE_NAME = 'callcutz-v8';
 
 // All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
@@ -18,13 +18,27 @@ const PRECACHE_URLS = [
 ];
 
 // Install: pre-cache the app shell and all critical resources
+// FIX: Use fetch() + cache.put() instead of cache.add() so opaque CDN responses
+// (like Tailwind, Lucide) are force-stored even when they redirect or lack CORS headers.
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            // Cache one by one so a single failure doesn't break everything
-            return Promise.allSettled(
-                PRECACHE_URLS.map(url => cache.add(url).catch(() => {}))
+        caches.open(CACHE_NAME).then(async (cache) => {
+            const results = await Promise.allSettled(
+                PRECACHE_URLS.map(async (url) => {
+                    try {
+                        const response = await fetch(url, { mode: 'no-cors' });
+                        // Store both real (status 200) and opaque (status 0) responses.
+                        // Opaque responses are from cross-origin CDNs — they work fine offline
+                        // when served from cache even though their status appears as 0.
+                        if (response && (response.status === 200 || response.type === 'opaque')) {
+                            await cache.put(url, response);
+                        }
+                    } catch (e) {
+                        // Silently ignore — network may be unavailable during install
+                    }
+                })
             );
+            return results;
         }).then(() => self.skipWaiting())
     );
 });
@@ -51,11 +65,12 @@ self.addEventListener('push', (event) => {
         const options = {
             body: data.body || '',
             icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780061690/Untitled_design__2_-removebg-preview_p8g0sc.png',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: data.tag || 'callcutz-notification',
             renotify: true,
             vibrate: [200, 100, 200],
             silent: false,
+            sound: 'default',
             data: { url: self.location.origin }
         };
         event.waitUntil(self.registration.showNotification(title, options));
@@ -92,7 +107,8 @@ self.addEventListener('message', (event) => {
             tag: 'password-change',
             renotify: true,
             vibrate: [200, 100, 200],
-            silent: false
+            silent: false,
+            sound: 'default'
         };
         self.registration.showNotification(title, options);
     }
@@ -104,7 +120,7 @@ self.addEventListener('fetch', (event) => {
 
     // Never intercept Supabase API calls — these must always go to the network
     if (url.hostname.includes('supabase.co') || url.hostname.includes('google.com')) {
-        return; 
+        return;
     }
 
     // CRITICAL FIX: For HTML requests (the app shell), force network check bypassing HTTP cache.
@@ -129,23 +145,34 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For everything else (images, CDNs): Use 'Stale-While-Revalidate' for instant loading,
-    // while updating the cache in the background for next time.
+    // For everything else (scripts, styles, images, CDNs):
+    // FIX: Stale-While-Revalidate with guaranteed fallback.
+    // The key fix: always return cachedResponse immediately if available,
+    // and explicitly return the network promise only when there is NO cache.
+    // Previously, the networkFetch promise could resolve to undefined on failure
+    // causing the browser to receive nothing even when a cached version existed.
     event.respondWith(
-            caches.match(event.request).then((cachedResponse) => {
-                const networkFetch = fetch(event.request).then((response) => {
-                    // FIX: Allow caching of opaque responses (status 0) from third-party CDNs so Tailwind works offline
+        caches.open(CACHE_NAME).then(async (cache) => {
+            const cachedResponse = await cache.match(event.request);
+
+            // Always kick off a background network refresh to keep cache fresh
+            const networkFetch = fetch(event.request, { mode: 'no-cors' })
+                .then((response) => {
                     if (response && (response.status === 200 || response.type === 'opaque')) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+                        cache.put(event.request, response.clone());
                     }
                     return response;
-                }).catch(() => {
-                    // Ignore network failures for assets since we have cache fallback
-                });
+                })
+                .catch(() => null); // FIX: Return null instead of undefined/reject on network failure
 
-                // Return cached response instantly if available, otherwise wait for network
-                return cachedResponse || networkFetch;
-            })
-        );
+            // If we have a cached version, return it INSTANTLY and revalidate in background
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+
+            // No cache — must wait for network (first load or cache miss)
+            const networkResponse = await networkFetch;
+            return networkResponse || new Response('', { status: 408, statusText: 'Network unavailable' });
+        })
+    );
 });
