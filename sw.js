@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v14';
+const CACHE_NAME = 'callcutz-v15';
 
 // All external CDN scripts and resources the app needs to function
 const PRECACHE_URLS = [
@@ -14,6 +14,7 @@ const PRECACHE_URLS = [
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780233538/Untitled_design_4_hwn0q7.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+    'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1771827572/Untitled_design-removebg-preview_bj0uah.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
