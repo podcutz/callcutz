@@ -77,6 +77,14 @@
             }
         }
 
+        /* PWA ONLY: Remove any divider line between status bar overlay and header */
+        @media (display-mode: standalone) and (max-width: 767px) {
+            header {
+                border-top: none !important;
+                box-shadow: none !important;
+            }
+        }
+
         /* Unified status bar + bottom gesture zone for standard mobile browser */
         @media (max-width: 767px) {
             #mobile-nav {
@@ -101,8 +109,29 @@
             
             #mobile-nav {
                 background: #000000 !important; /* Force pure black to blend transparently with OS bar */
-                border-top: 1px solid rgba(255,255,255,0.05); /* Subtle separator since box-shadow is removed */
+                border-top: none !important; /* CHANGE 3: Remove the thin line between status bar and app top */
                 box-shadow: none !important;
+            }
+
+            /* CHANGE 1: Remove inner scroll on dashboard tab content in PWA */
+            .pwa-dashboard-content {
+                height: auto !important;
+                max-height: none !important;
+                overflow-y: visible !important;
+                overflow-x: hidden !important;
+            }
+
+            /* CHANGE 2: Push tab bottom border slightly lower — adjust padding-bottom value to taste */
+            /* Increase padding-bottom (e.g. pb-2 = 8px, pb-3 = 12px) to move border further down */
+            .pwa-tab-row {
+                padding-bottom: 6px !important; /* ← change this number to move the border up/down */
+            }
+
+            /* CHANGE 4: Nudge nav icons upward in PWA — adjust pt/pb values to taste */
+            /* Decrease padding-bottom or increase padding-top to move icons higher */
+            #mobile-nav .flex.items-center.justify-evenly {
+                padding-top: 14px !important;    /* ← increase to push icons higher */
+                padding-bottom: 10px !important; /* ← decrease to pull icons upward */
             }
         }
 
@@ -694,12 +723,12 @@
                         </div>
                     </div>
                     <div class="bg-black rounded-xl border border-white/10 overflow-hidden shadow-none md:shadow-[0_0_50px_rgba(255,255,255,0.02)]">
-                        <div class="flex overflow-x-auto border-b border-white/10 px-4 md:px-6 pt-2 custom-scrollbar">
+                        <div class="flex overflow-x-auto border-b border-white/10 px-4 md:px-6 pt-2 custom-scrollbar pwa-tab-row">
                             <button onclick="switchTab('upcoming')" id="tab-upcoming" class="px-4 py-3 md:py-4 text-xs font-light tracking-widest transition-all tab-active capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Upcoming</button>
                             <button onclick="switchTab('requests')" id="tab-requests" class="px-4 py-3 md:py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Requests <span id="request-count" class="ml-1 bg-white text-black px-1.5 rounded-full text-[9px]">0</span></button>
                             <button onclick="switchTab('past')" id="tab-past" class="px-4 py-3 md:py-4 text-xs font-light tracking-widest text-white/30 hover:text-white transition-all capitalize" style="font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Past</button>
                         </div>
-                        <div class="h-[60vh] md:h-[480px] overflow-y-auto overflow-x-hidden">
+                        <div class="h-[60vh] md:h-[480px] overflow-y-auto overflow-x-hidden pwa-dashboard-content">
                             <div id="content-upcoming" class="p-4 space-y-2"></div>
                         <div id="content-requests" class="hidden p-4 space-y-2"></div>
                         <div id="content-past" class="hidden p-4 space-y-2"></div>
