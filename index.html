@@ -303,33 +303,33 @@
         /* Instagram-style PTR (PWA Only) */
         #insta-ptr-container {
             position: fixed;
-            top: env(safe-area-inset-top, 0px);
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
             left: 50%;
-            transform: translateX(-50%) translateY(-80px);
-            width: 40px;
-            height: 40px;
-            z-index: 9999;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 28px;
+            z-index: 0;
             pointer-events: none;
         }
         #insta-drag-rings {
             position: absolute;
-            top: 0; left: 0; width: 40px; height: 40px;
+            top: 0; left: 0; width: 28px; height: 28px;
             transform: rotate(-90deg);
             transition: opacity 0.2s ease;
         }
-        .insta-ring-bg { fill: none; stroke: rgba(255,255,255,0.15); stroke-width: 3px; }
-        .insta-ring-fg { fill: none; stroke: #ffffff; stroke-width: 3px; }
+        .insta-ring-bg { fill: none; stroke: rgba(255,255,255,0.15); stroke-width: 2.5px; }
+        .insta-ring-fg { fill: none; stroke: #ffffff; stroke-width: 2.5px; }
         
         .insta-spinner-circle {
             position: absolute;
-            top: 0; left: 0; width: 40px; height: 40px;
+            top: 0; left: 0; width: 28px; height: 28px;
             border-radius: 50%;
             opacity: 0;
             transition: opacity 0.2s ease;
             background: conic-gradient(from 0deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 20%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.8) 80%, rgba(255,255,255,1) 100%);
-            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2.5px));
-            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2.5px));
-            animation: insta-spin 0.8s linear infinite;
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
+            animation: insta-spin 0.6s linear infinite;
         }
         
         .insta-is-loading #insta-drag-rings { opacity: 0; }
@@ -341,9 +341,9 @@
 <body class="bg-black text-white font-sans min-h-screen overflow-x-hidden flex">
 
     <div id="insta-ptr-container" class="md:hidden">
-        <svg id="insta-drag-rings" viewBox="0 0 40 40">
-            <circle class="insta-ring-bg" cx="20" cy="20" r="18.5"></circle>
-            <circle class="insta-ring-fg" cx="20" cy="20" r="18.5"></circle>
+        <svg id="insta-drag-rings" viewBox="0 0 28 28">
+            <circle class="insta-ring-bg" cx="14" cy="14" r="12.5"></circle>
+            <circle class="insta-ring-fg" cx="14" cy="14" r="12.5"></circle>
         </svg>
         <div class="insta-spinner-circle" id="insta-spinner"></div>
     </div>
@@ -689,7 +689,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <main id="mainContent" class="relative content-transition h-screen flex-1 flex flex-col overflow-y-auto pb-24 md:pb-0">
+    <main id="mainContent" class="relative content-transition h-screen flex-1 flex flex-col overflow-y-auto pb-24 md:pb-0 z-10 bg-black">
      
         <header class="p-4 pt-safe md:pt-8 md:p-8 pb-4 md:pb-6 bg-black flex flex-row justify-between items-center md:items-end relative gap-4 w-full">
             <div class="mt-0 md:mt-0 w-full">
@@ -5508,11 +5508,12 @@ async function deleteMeeting(id, skipWebhook = false) {
         let ptrStartY = 0;
         let ptrCurrentY = 0;
         let ptrIsPulling = false;
+        let ptrIsReadyToRefresh = false;
         const ptrContainer = document.getElementById('insta-ptr-container');
         const fgRing = ptrContainer.querySelector('.insta-ring-fg');
         const mainScrollArea = document.getElementById('mainContent');
         
-        const radius = 18.5;
+        const radius = 12.5;
         const circumference = 2 * Math.PI * radius; 
         fgRing.style.strokeDasharray = circumference;
         fgRing.style.strokeDashoffset = 0; 
@@ -5546,10 +5547,12 @@ async function deleteMeeting(id, skipWebhook = false) {
                 ptrStartY = e.touches[0].clientY;
                 ptrCurrentY = ptrStartY;
                 ptrIsPulling = true;
+                ptrIsReadyToRefresh = false;
+                
                 ptrContainer.classList.remove('insta-is-loading');
-                ptrContainer.style.transition = 'none';
                 fgRing.style.transition = 'none';
                 mainScrollArea.style.transition = 'none';
+                fgRing.style.strokeDashoffset = 0;
             }
         }, { passive: true });
 
@@ -5562,6 +5565,7 @@ async function deleteMeeting(id, skipWebhook = false) {
             // Finger went up, cancel
             if (deltaY < 0) {
                 ptrIsPulling = false;
+                ptrIsReadyToRefresh = false;
                 mainScrollArea.style.transform = 'translateY(0px)';
                 mainScrollArea.style.borderTop = 'none';
                 mainScrollArea.style.borderTopLeftRadius = '0px';
@@ -5573,11 +5577,11 @@ async function deleteMeeting(id, skipWebhook = false) {
             if (deltaY > 0 && mainScrollArea.scrollTop <= 0) {
                 if (e.cancelable) e.preventDefault(); 
                 
-                let progress = Math.min(deltaY / 150, 1); 
-                let contentTranslateY = Math.min(deltaY * 0.4, 60); 
-                let spinnerTranslateY = Math.max(-60 + (deltaY * 0.6), 20); 
+                let pullResistance = 120; // Exact distance required to trigger refresh
+                let progress = Math.min(deltaY / pullResistance, 1); 
+                let contentTranslateY = Math.min(deltaY * 0.45, 60); 
 
-                // Drag the app shell down
+                // Drag the app shell down (loader stays fixed behind it)
                 mainScrollArea.style.transform = `translateY(${contentTranslateY}px)`;
                 
                 // Gradually expose the top border
@@ -5587,25 +5591,29 @@ async function deleteMeeting(id, skipWebhook = false) {
                     mainScrollArea.style.borderTopRightRadius = '16px';
                 }
 
-                ptrContainer.style.transform = `translateX(-50%) translateY(${spinnerTranslateY}px)`;
-                fgRing.style.strokeDashoffset = -(progress * circumference);
+                // If not locked into refresh state, draw the ring
+                if (!ptrIsReadyToRefresh) {
+                    fgRing.style.strokeDashoffset = -(progress * circumference);
+                    
+                    // Trigger condition: Ring is completely erased
+                    if (progress >= 1) {
+                        ptrIsReadyToRefresh = true;
+                        ptrContainer.classList.add('insta-is-loading');
+                    }
+                }
             }
         }, { passive: false });
 
         document.addEventListener('touchend', () => {
             if (!ptrIsPulling || window.innerWidth >= 768) return;
             ptrIsPulling = false;
-            let deltaY = ptrCurrentY - ptrStartY;
             
-            ptrContainer.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
             fgRing.style.transition = 'stroke-dashoffset 0.3s ease';
             mainScrollArea.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-radius 0.3s, border-top 0.3s';
 
-            if (deltaY > 90 && mainScrollArea.scrollTop <= 0) {
-                // Success: Lock into Loading State
-                ptrContainer.classList.add('insta-is-loading');
-                ptrContainer.style.transform = 'translateX(-50%) translateY(30px)';
-                mainScrollArea.style.transform = 'translateY(50px)'; 
+            if (ptrIsReadyToRefresh) {
+                // Success: Locked into Loading State
+                mainScrollArea.style.transform = 'translateY(60px)'; // Hold page down while loading
                 
                 (async () => {
                     try {
@@ -5626,26 +5634,25 @@ async function deleteMeeting(id, skipWebhook = false) {
                         console.error("Soft refresh failed:", err);
                     } finally {
                         setTimeout(() => {
-                            // Retreat sequence
+                            // Retreat sequence: slide page back up
+                            ptrIsReadyToRefresh = false;
                             ptrContainer.classList.remove('insta-is-loading');
-                            ptrContainer.style.transition = 'transform 0.4s ease-in-out';
-                            ptrContainer.style.transform = 'translateX(-50%) translateY(-80px)'; 
                             
                             mainScrollArea.style.transform = 'translateY(0px)';
                             mainScrollArea.style.borderTop = 'none';
                             mainScrollArea.style.borderTopLeftRadius = '0px';
                             mainScrollArea.style.borderTopRightRadius = '0px';
 
+                            // Reset the ring drawing after it is hidden behind the page
                             setTimeout(() => {
                                 fgRing.style.transition = 'none';
                                 fgRing.style.strokeDashoffset = 0;
-                            }, 400);
+                            }, 300);
                         }, 600);
                     }
                 })();
             } else {
-                // Not dragged far enough, snap back instantly
-                ptrContainer.style.transform = 'translateX(-50%) translateY(-80px)';
+                // Not dragged far enough, snap page back instantly
                 mainScrollArea.style.transform = 'translateY(0px)';
                 mainScrollArea.style.borderTop = 'none';
                 mainScrollArea.style.borderTopLeftRadius = '0px';
