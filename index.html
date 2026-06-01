@@ -5523,9 +5523,17 @@ async function deleteMeeting(id, skipWebhook = false) {
                         console.log('ServiceWorker registration successful with scope: ', registration.scope);
                         
                         // Automatically check for updates whenever the user opens the app from background
-                        document.addEventListener('visibilitychange', () => {
+                        document.addEventListener('visibilitychange', async () => {
                             if (document.visibilityState === 'visible') {
                                 registration.update();
+                                // Force a fresh data pull and UI re-render when waking up
+                                if (authUserId && !pwaOfflineGuard()) {
+                                    await fetchCoreData(false);
+                                    const activePage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+                                    if (activePage === 'dashboard') renderDashboard();
+                                    if (activePage === 'availability') initAvailability();
+                                    if (activePage === 'teamview') renderTeamGrid();
+                                }
                             }
                         });
                     })
