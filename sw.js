@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v21';
+const CACHE_NAME = 'callcutz-v22';
 
 const PRECACHE_URLS = [
     './',
@@ -52,7 +52,9 @@ self.addEventListener('activate', (event) => {
 // PUSH NOTIFICATIONS
 self.addEventListener('push', (event) => {
     if (!event.data) return;
-    try {
+    
+    // W3C compliant Promise chain ensures the OS does not kill the thread prematurely
+    const promiseChain = Promise.resolve().then(() => {
         const data = event.data.json();
         const title = data.title || 'Callcutz';
         
@@ -67,15 +69,16 @@ self.addEventListener('push', (event) => {
             tag: uniqueTag,
             renotify: true,
             requireInteraction: true, // Forces aggressive Android OS (like MIUI) to display it
-            vibrate: [200, 100, 200],
+            vibrate: [300, 100, 400, 100, 500], // Heavier vibration pattern to ensure device wake
             silent: false,
             sound: 'default',
             data: { url: self.location.origin }
         };
-        event.waitUntil(self.registration.showNotification(title, options));
-    } catch(e) {
-        console.log('Push parse error:', e);
-    }
+        
+        return self.registration.showNotification(title, options);
+    }).catch(e => console.log('Push parse error:', e));
+
+    event.waitUntil(promiseChain);
 });
 
 // Handle notification click: open/focus the PWA
