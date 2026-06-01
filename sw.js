@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v18';
+const CACHE_NAME = 'callcutz-v19';
 
 const PRECACHE_URLS = [
     './',
@@ -80,15 +80,27 @@ self.addEventListener('push', (event) => {
 // Handle notification click: open/focus the PWA
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+
+    // Determine the target URL based on the notification tag
+    let targetUrl = self.location.origin;
+    const tag = event.notification.tag || '';
+    
+    // If it's a meeting request or lead request, deep link to the requests tab
+    if (tag.includes('meeting-request') || tag.includes('lead-request')) {
+        targetUrl = self.location.origin + '?tab=requests';
+    }
+
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
             for (const client of windowClients) {
                 if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    // Navigate the existing client to the correct tab
+                    client.navigate(targetUrl);
                     return client.focus();
                 }
             }
             if (clients.openWindow) {
-                return clients.openWindow(self.location.origin);
+                return clients.openWindow(targetUrl);
             }
         })
     );
