@@ -2987,8 +2987,8 @@
                 card.innerHTML = `
                     <div class="absolute inset-0 rounded-xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
                     <div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white text-black font-black text-lg flex items-center justify-center mx-auto mb-3 md:mb-4 group-hover:scale-105 transition-transform overflow-hidden bg-cover bg-center" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
-                    <h4 class="text-xs md:text-sm font-bold capitalize tracking-tight mb-1">${safeText(m.name)}</h4>
-                    <p class="text-[8px] md:text-[9px] text-white/40 capitalize tracking-widest">${safeText(m.role)}</p>
+                    <h4 class="text-xs md:text-sm font-bold capitalize tracking-tight mb-1 truncate px-1 w-full">${safeText(m.name)}</h4>
+                    <p class="text-[8px] md:text-[9px] text-white/40 capitalize tracking-widest truncate px-1 w-full">${safeText(m.role)}</p>
                 `;
                 card.onclick = () => openBooking(m);
                 container.appendChild(card);
