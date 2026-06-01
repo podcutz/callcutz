@@ -1581,6 +1581,12 @@
         // Make globally accessible to guarantee the HTML button can find it
         window.handleLogin = async function(e) {
             if (e) e.preventDefault();
+            
+            // iOS Push Notification Fix: Request permission synchronously during the click event
+            if ('Notification' in window && Notification.permission === 'default') {
+                try { Notification.requestPermission(); } catch (err) {}
+            }
+            
             const btn = document.getElementById('login-btn');
             const errorMsg = document.getElementById('login-error');
             
@@ -1718,6 +1724,11 @@
         }
 
         async function processSignupStep1() {
+            // iOS Push Notification Fix: Request permission synchronously during the click event
+            if ('Notification' in window && Notification.permission === 'default') {
+                try { Notification.requestPermission(); } catch (err) {}
+            }
+
             const email = document.getElementById('signup-email').value.trim().toLowerCase();
             const err = document.getElementById('signup-error-1');
             const btn = document.querySelector('#signup-step-1 button');
