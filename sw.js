@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v23';
+const CACHE_NAME = 'callcutz-v24';
 
 const PRECACHE_URLS = [
     './',
@@ -63,19 +63,19 @@ self.addEventListener('push', (event) => {
         const uniqueTag = `${baseTag}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         const options = {
-            body: data.body || '',
-            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
-            tag: uniqueTag,
-            renotify: true,
-            requireInteraction: true, // Forces aggressive Android OS (like MIUI) to display it
-            vibrate: [300, 100, 400, 100, 500], // Heavier vibration pattern to ensure device wake
-            silent: false,
-            sound: 'default',
-            data: { url: self.location.origin }
-        };
-        
-        return self.registration.showNotification(title, options);
+                body: data.body || '',
+                icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
+                badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
+                tag: uniqueTag,
+                renotify: true,
+                requireInteraction: true, // Forces aggressive Android OS (like MIUI) to display it
+                vibrate: [300, 100, 400, 100, 500], // Heavier vibration pattern to ensure device wake
+                silent: false, // Ensures the notification is NOT silenced
+                // Note: 'sound' property is removed because 'default' is not a valid URL. Omitting it forces the native OS chime (fixing Redmi/iOS silence).
+                data: { url: self.registration.scope }
+            };
+            
+            return self.registration.showNotification(title, options);
     });
 
     event.waitUntil(promiseChain);
@@ -98,33 +98,34 @@ self.addEventListener('message', (event) => {
 });
 
 // Handle notification click: open/focus the PWA
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
+    self.addEventListener('notificationclick', (event) => {
+        event.notification.close();
 
-    // Determine the target URL based on the notification tag
-    let targetUrl = self.location.origin;
-    const tag = event.notification.tag || '';
-    
-    // If it's a meeting request or lead request, deep link to the requests tab
-    if (tag.includes('meeting-request') || tag.includes('lead-request')) {
-        targetUrl = self.location.origin + '/?tab=requests';
-    }
+        // Determine the target URL based on the notification tag
+        // Use self.registration.scope instead of location.origin to avoid 404s on GitHub Pages/subfolders
+        let targetUrl = self.registration.scope;
+        const tag = event.notification.tag || '';
+        
+        // If it's a meeting request or lead request, deep link to the requests tab
+        if (tag.includes('meeting-request') || tag.includes('lead-request')) {
+            targetUrl = targetUrl.replace(/\/$/, '') + '/?tab=requests';
+        }
 
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            for (const client of windowClients) {
-                if (client.url.includes(self.location.origin) && 'focus' in client) {
-                    // Navigate the existing client to the correct tab
-                    client.navigate(targetUrl);
-                    return client.focus();
+        event.waitUntil(
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+                for (const client of windowClients) {
+                    if (client.url.includes(self.registration.scope) && 'focus' in client) {
+                        // Navigate the existing client to the correct tab
+                        client.navigate(targetUrl);
+                        return client.focus();
+                    }
                 }
-            }
-            if (clients.openWindow) {
-                return clients.openWindow(targetUrl);
-            }
-        })
-    );
-});
+                if (clients.openWindow) {
+                    return clients.openWindow(targetUrl);
+                }
+            })
+        );
+    });
 
 // Handle LOCAL_NOTIFICATION messages from the page (e.g. password change)
 
