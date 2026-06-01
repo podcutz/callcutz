@@ -10,7 +10,7 @@
   "display_override": ["standalone"],
   "screenshots": [
     {
-      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png",
+      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow"
@@ -18,13 +18,13 @@
   ],
   "icons": [
     {
-      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png",
+      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png",
+      "src": "https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
