@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v22';
+const CACHE_NAME = 'callcutz-v23';
 
 const PRECACHE_URLS = [
     './',
@@ -76,9 +76,25 @@ self.addEventListener('push', (event) => {
         };
         
         return self.registration.showNotification(title, options);
-    }).catch(e => console.log('Push parse error:', e));
+    });
 
     event.waitUntil(promiseChain);
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'LOCAL_NOTIFICATION') {
+        const title = event.data.title || 'Callcutz';
+        const options = {
+            body: event.data.body || '',
+            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
+            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
+            tag: 'password-change',
+            renotify: true,
+            vibrate: [200, 100, 200],
+            silent: false
+        };
+        self.registration.showNotification(title, options);
+    }
 });
 
 // Handle notification click: open/focus the PWA
@@ -111,21 +127,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // Handle LOCAL_NOTIFICATION messages from the page (e.g. password change)
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'LOCAL_NOTIFICATION') {
-        const title = event.data.title || 'Callcutz';
-        const options = {
-            body: event.data.body || '',
-            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
-            badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
-            tag: 'password-change',
-            renotify: true,
-            vibrate: [200, 100, 200],
-            silent: false
-        };
-        self.registration.showNotification(title, options);
-    }
-});
+
 
 // Fetch: smart caching strategy
 self.addEventListener('fetch', (event) => {
