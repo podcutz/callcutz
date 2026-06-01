@@ -4361,8 +4361,37 @@ async function deleteMeeting(id, skipWebhook = false) {
                     const hostIds = respondedMeeting.host_id.filter(id => id !== authUserId);
                     if (hostIds.length > 0) {
                         const responderName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
-                        const actionLabel = action === 'accepted' ? 'accepted' : 'declined';
-                        sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted' : 'Declined'}`, `${responderName} ${actionLabel} your meeting request: ${respondedMeeting.title || 'Meeting'}`, 'meeting-response');
+                        
+                        if (respondedMeeting.type === 'lead') {
+                            const leadName = respondedMeeting.name || respondedMeeting.title.replace(/with\s+/i, '').replace(/\(Lead\)/i, '').trim();
+                            
+                            if (action === 'declined') {
+                                sendPushNotification(hostIds, 'Meeting Update', `${responderName} has declined the Lead Call request of ${leadName}.`, `lead-declined-${Date.now()}`);
+                            } else if (action === 'accepted') {
+                                const otherHostId = hostIds[0];
+                                const otherHostPart = respondedMeeting.meeting_participants.find(p => p.user_id === otherHostId);
+                                const otherStatus = otherHostPart ? otherHostPart.response_status : 'pending';
+                                
+                                if (otherStatus === 'pending') {
+                                    sendPushNotification(hostIds, 'Meeting Update', `${responderName} has accepted the Lead Call request of ${leadName}. Your response is required!`, `lead-update-${Date.now()}`);
+                                } else if (otherStatus === 'accepted') {
+                                    const meetStart = new Date(respondedMeeting.start_time_utc);
+                                    const isToday = new Date().toDateString() === meetStart.toDateString();
+                                    const timeString = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart);
+                                    
+                                    const d = meetStart.getDate();
+                                    const ordinal = d > 3 && d < 21 ? 'th' : ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][d % 10];
+                                    const cleanDateString = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, weekday: 'long' }).format(meetStart) + ', ' + d + ordinal + ' ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, month: 'long', year: 'numeric' }).format(meetStart);
+
+                                    const dateText = isToday ? `for Today at ${timeString}` : `on ${cleanDateString} at ${timeString}`;
+                                    
+                                    sendPushNotification(hostIds, 'Meeting Update', `Lead Discovery Call with ${leadName} has been confirmed ${dateText}.`, `lead-confirmed-${Date.now()}`);
+                                }
+                            }
+                        } else {
+                            const actionLabel = action === 'accepted' ? 'accepted' : 'declined';
+                            sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted' : 'Declined'}`, `${responderName} ${actionLabel} your meeting request: ${respondedMeeting.title || 'Meeting'}`, `meeting-response-${Date.now()}`);
+                        }
                     }
                 }
 
