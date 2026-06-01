@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v20';
+const CACHE_NAME = 'callcutz-v21';
 
 const PRECACHE_URLS = [
     './',
@@ -66,6 +66,7 @@ self.addEventListener('push', (event) => {
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
             tag: uniqueTag,
             renotify: true,
+            requireInteraction: true, // Forces aggressive Android OS (like MIUI) to display it
             vibrate: [200, 100, 200],
             silent: false,
             sound: 'default',
