@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v19';
+const CACHE_NAME = 'callcutz-v20';
 
 const PRECACHE_URLS = [
     './',
@@ -87,7 +87,7 @@ self.addEventListener('notificationclick', (event) => {
     
     // If it's a meeting request or lead request, deep link to the requests tab
     if (tag.includes('meeting-request') || tag.includes('lead-request')) {
-        targetUrl = self.location.origin + '?tab=requests';
+        targetUrl = self.location.origin + '/?tab=requests';
     }
 
     event.waitUntil(
