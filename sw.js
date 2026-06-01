@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v17';
+const CACHE_NAME = 'callcutz-v18';
 
 const PRECACHE_URLS = [
     './',
@@ -13,7 +13,6 @@ const PRECACHE_URLS = [
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780233538/Untitled_design_4_hwn0q7.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
-    'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1771827572/Untitled_design-removebg-preview_bj0uah.png',
     'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
@@ -56,11 +55,16 @@ self.addEventListener('push', (event) => {
     try {
         const data = event.data.json();
         const title = data.title || 'Callcutz';
+        
+        // Guarantee unique tags so notifications stack in the OS instead of overwriting
+        const baseTag = data.tag || 'callcutz-notification';
+        const uniqueTag = `${baseTag}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
         const options = {
             body: data.body || '',
-            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png',
+            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
-            tag: data.tag || 'callcutz-notification',
+            tag: uniqueTag,
             renotify: true,
             vibrate: [200, 100, 200],
             silent: false,
@@ -96,7 +100,7 @@ self.addEventListener('message', (event) => {
         const title = event.data.title || 'Callcutz';
         const options = {
             body: event.data.body || '',
-            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png',
+            icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
             badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
             tag: 'password-change',
             renotify: true,
@@ -119,8 +123,7 @@ self.addEventListener('fetch', (event) => {
     const iconUrls = [
         'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062578/Untitled_design_3_oghhka.png',
         'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png',
-        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
-        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780243082/Rectangle_1_wg6elf.png'
+        'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png'
     ];
     if (iconUrls.some(iconUrl => event.request.url === iconUrl)) {
         return;
