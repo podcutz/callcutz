@@ -1582,9 +1582,21 @@
         window.handleLogin = async function(e) {
             if (e) e.preventDefault();
             
-            // iOS Push Notification Fix: Request permission synchronously during the click event
-            if ('Notification' in window && Notification.permission === 'default') {
-                try { Notification.requestPermission(); } catch (err) {}
+            // iOS Push Notification Fix: AWAIT permission and trigger subscription synchronously during the user click event
+            if ('Notification' in window && 'serviceWorker' in navigator) {
+                try {
+                    if (Notification.permission === 'default') {
+                        await Notification.requestPermission();
+                    }
+                    // Apple WebKit strict requirement: pushManager.subscribe MUST be fired before the user gesture token expires
+                    navigator.serviceWorker.ready.then(reg => {
+                        reg.pushManager.getSubscription().then(sub => {
+                            if (!sub && Notification.permission === 'granted') {
+                                reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }).catch(()=>{});
+                            }
+                        });
+                    });
+                } catch (err) {}
             }
             
             const btn = document.getElementById('login-btn');
@@ -1724,9 +1736,21 @@
         }
 
         async function processSignupStep1() {
-            // iOS Push Notification Fix: Request permission synchronously during the click event
-            if ('Notification' in window && Notification.permission === 'default') {
-                try { Notification.requestPermission(); } catch (err) {}
+            // iOS Push Notification Fix: AWAIT permission and trigger subscription synchronously during the user click event
+            if ('Notification' in window && 'serviceWorker' in navigator) {
+                try {
+                    if (Notification.permission === 'default') {
+                        await Notification.requestPermission();
+                    }
+                    // Apple WebKit strict requirement: pushManager.subscribe MUST be fired before the user gesture token expires
+                    navigator.serviceWorker.ready.then(reg => {
+                        reg.pushManager.getSubscription().then(sub => {
+                            if (!sub && Notification.permission === 'granted') {
+                                reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }).catch(()=>{});
+                            }
+                        });
+                    });
+                } catch (err) {}
             }
 
             const email = document.getElementById('signup-email').value.trim().toLowerCase();
