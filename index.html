@@ -1578,25 +1578,28 @@
 
         let currentUserProfile = null;
 
+        // Global holding variable for iOS tokens generated during synchronous physical taps
+        window.applePushTokenCache = null;
+
         // Make globally accessible to guarantee the HTML button can find it
         window.handleLogin = async function(e) {
             if (e) e.preventDefault();
             
-            // iOS Push Notification Fix: AWAIT permission and trigger subscription synchronously during the user click event
+            // iOS Push Notification Fix: AWAIT permission and capture the subscription synchronously while the user tap gesture is still alive
             if ('Notification' in window && 'serviceWorker' in navigator) {
                 try {
                     if (Notification.permission === 'default') {
                         await Notification.requestPermission();
                     }
-                    // Apple WebKit strict requirement: pushManager.subscribe MUST be fired before the user gesture token expires
-                    navigator.serviceWorker.ready.then(reg => {
-                        reg.pushManager.getSubscription().then(sub => {
-                            if (!sub && Notification.permission === 'granted') {
-                                reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }).catch(()=>{});
-                            }
-                        });
-                    });
-                } catch (err) {}
+                    if (Notification.permission === 'granted') {
+                        const reg = await navigator.serviceWorker.ready;
+                        let sub = await reg.pushManager.getSubscription();
+                        if (!sub) {
+                            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+                        }
+                        window.applePushTokenCache = sub; // Cache it instantly before network request drops authorization
+                    }
+                } catch (err) { console.warn("Apple WebKit Push Block:", err); }
             }
             
             const btn = document.getElementById('login-btn');
@@ -1736,21 +1739,21 @@
         }
 
         async function processSignupStep1() {
-            // iOS Push Notification Fix: AWAIT permission and trigger subscription synchronously during the user click event
+            // iOS Push Notification Fix: AWAIT permission and capture the subscription synchronously while the user tap gesture is still alive
             if ('Notification' in window && 'serviceWorker' in navigator) {
                 try {
                     if (Notification.permission === 'default') {
                         await Notification.requestPermission();
                     }
-                    // Apple WebKit strict requirement: pushManager.subscribe MUST be fired before the user gesture token expires
-                    navigator.serviceWorker.ready.then(reg => {
-                        reg.pushManager.getSubscription().then(sub => {
-                            if (!sub && Notification.permission === 'granted') {
-                                reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }).catch(()=>{});
-                            }
-                        });
-                    });
-                } catch (err) {}
+                    if (Notification.permission === 'granted') {
+                        const reg = await navigator.serviceWorker.ready;
+                        let sub = await reg.pushManager.getSubscription();
+                        if (!sub) {
+                            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+                        }
+                        window.applePushTokenCache = sub; // Cache it instantly before network request drops authorization
+                    }
+                } catch (err) { console.warn("Apple WebKit Push Block:", err); }
             }
 
             const email = document.getElementById('signup-email').value.trim().toLowerCase();
@@ -5504,22 +5507,25 @@ async function deleteMeeting(id, skipWebhook = false) {
                 if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
                 if (!authUserId) return;
 
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') return;
-
-                const registration = await navigator.serviceWorker.ready;
-                const existingSub = await registration.pushManager.getSubscription();
-                if (existingSub) {
-                    // Already subscribed — save/refresh in DB
-                    await savePushSubscription(existingSub);
+                // iOS Fix: Pull the token from our synchronous tap cache if it exists!
+                if (window.applePushTokenCache) {
+                    await savePushSubscription(window.applePushTokenCache);
+                    window.applePushTokenCache = null; // Clear cache after saving
                     return;
                 }
 
-                const sub = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                });
-                await savePushSubscription(sub);
+                // If no cache, fallback to background check (works on Android, fails on strict iOS if not cached)
+                if (Notification.permission === 'granted') {
+                    const registration = await navigator.serviceWorker.ready;
+                    let sub = await registration.pushManager.getSubscription();
+                    if (!sub) {
+                        sub = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                        });
+                    }
+                    if (sub) await savePushSubscription(sub);
+                }
             } catch (e) {
                 console.log('Push registration skipped:', e.message);
             }
@@ -5552,6 +5558,13 @@ async function deleteMeeting(id, skipWebhook = false) {
 
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
+            // iOS Fix: Alert the user inside the app since iOS hides native banners when the app is open
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'FOREGROUND_PUSH') {
+                    showToast(`🔔 ${event.data.title}: ${event.data.body}`);
+                }
+            });
+
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
                     .then(registration => {
