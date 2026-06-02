@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v24';
+const CACHE_NAME = 'callcutz-v26';
 
 const PRECACHE_URLS = [
     './',
