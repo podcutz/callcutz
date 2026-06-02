@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v26';
+const CACHE_NAME = 'callcutz-v27';
 
 const PRECACHE_URLS = [
     './',
@@ -54,24 +54,30 @@ self.addEventListener('push', (event) => {
     if (!event.data) return;
     
     // W3C compliant Promise chain ensures the OS does not kill the thread prematurely
-    const promiseChain = Promise.resolve().then(() => {
+    const promiseChain = Promise.resolve().then(async () => {
         const data = event.data.json();
         const title = data.title || 'Callcutz';
+        const bodyText = data.body || 'You have a new update.';
         
+        // iOS Foreground Override: Send message to open client so they know it arrived while app is open
+        const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        clientsList.forEach(client => {
+            client.postMessage({ type: 'FOREGROUND_PUSH', title: title, body: bodyText });
+        });
+
         // Guarantee unique tags so notifications stack in the OS instead of overwriting
         const baseTag = data.tag || 'callcutz-notification';
         const uniqueTag = `${baseTag}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         const options = {
-                body: data.body || '',
+                body: bodyText,
                 icon: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780240888/Untitled_2_rzvlap.png',
                 badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
                 tag: uniqueTag,
                 renotify: true,
-                requireInteraction: true, // Forces aggressive Android OS (like MIUI) to display it
-                vibrate: [300, 100, 400, 100, 500], // Heavier vibration pattern to ensure device wake
-                silent: false, // Ensures the notification is NOT silenced
-                // Note: 'sound' property is removed because 'default' is not a valid URL. Omitting it forces the native OS chime (fixing Redmi/iOS silence).
+                // iOS strictness: 'requireInteraction' is unsupported by Apple WebKit and can sometimes cause the push payload to be aborted entirely. We remove it to ensure cross-platform safety.
+                vibrate: [300, 100, 400, 100, 500],
+                silent: false, 
                 data: { url: self.registration.scope }
             };
             
