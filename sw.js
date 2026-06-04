@@ -1,4 +1,4 @@
-const CACHE_NAME = 'callcutz-v27';
+const CACHE_NAME = 'callcutz-v28';
 
 const PRECACHE_URLS = [
     './',
@@ -69,8 +69,8 @@ self.addEventListener('push', (event) => {
                 badge: 'https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png',
                 tag: uniqueTag,
                 renotify: true,
-                // iOS strictness: 'requireInteraction' is unsupported by Apple WebKit and can sometimes cause the push payload to be aborted entirely. We remove it to ensure cross-platform safety.
-                vibrate: [300, 100, 400, 100, 500],
+                requireInteraction: true, // Forces Android to wake screen and wait for user action
+                vibrate: [500, 250, 500, 250, 500, 250, 500], // Extended aggressive vibration mimics a ring/call
                 silent: false, 
                 data: { url: self.registration.scope }
             };
