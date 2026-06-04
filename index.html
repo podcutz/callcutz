@@ -5558,13 +5558,6 @@ async function deleteMeeting(id, skipWebhook = false) {
 
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
-            // iOS Fix: Alert the user inside the app since iOS hides native banners when the app is open
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'FOREGROUND_PUSH') {
-                    showToast(`🔔 ${event.data.title}: ${event.data.body}`);
-                }
-            });
-
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
                     .then(registration => {
