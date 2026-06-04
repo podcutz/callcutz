@@ -59,12 +59,6 @@ self.addEventListener('push', (event) => {
         const title = data.title || 'Callcutz';
         const bodyText = data.body || 'You have a new update.';
         
-        // iOS Foreground Override: Send message to open client so they know it arrived while app is open
-        const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-        clientsList.forEach(client => {
-            client.postMessage({ type: 'FOREGROUND_PUSH', title: title, body: bodyText });
-        });
-
         // Guarantee unique tags so notifications stack in the OS instead of overwriting
         const baseTag = data.tag || 'callcutz-notification';
         const uniqueTag = `${baseTag}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
