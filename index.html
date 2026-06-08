@@ -3109,9 +3109,9 @@
                 card.className = "p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-all flex items-center space-x-3";
                 card.innerHTML = `
                     <div class="w-10 h-10 rounded-full bg-white/10 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden bg-cover bg-center" ${m.avatar ? `style="background-image: url(${m.avatar})"` : ''}>${m.avatar ? '' : m.init}</div>
-                    <div class="flex flex-col text-left">
-                        <h4 class="text-xs font-bold capitalize tracking-tight">${m.name}</h4>
-                        <p class="text-[9px] text-white/40 capitalize tracking-widest">${m.role}</p>
+                    <div class="flex flex-col text-left min-w-0 flex-1">
+                        <h4 class="text-xs font-bold capitalize tracking-tight truncate w-full">${m.name}</h4>
+                        <p class="text-[9px] text-white/40 capitalize tracking-widest truncate w-full">${m.role}</p>
                     </div>
                 `;
                 card.onclick = () => {
@@ -4989,18 +4989,20 @@ async function deleteMeeting(id, skipWebhook = false) {
                     <div class="user-card-row relative flex flex-col md:flex-row md:items-center justify-between p-3.5 md:p-3 rounded-xl md:rounded-lg bg-white/[0.02] md:bg-white/5 border border-transparent md:border-white/5 md:hover:bg-white/10 transition-colors z-0 gap-3 md:gap-0 mt-1">
                         <div class="absolute inset-0 rounded-xl border-[1.5px] border-transparent md:hidden pointer-events-none" style="background: linear-gradient(to bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 60%) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: destination-out; mask-composite: exclude; z-index: -1;"></div>
                         
-                        <div class="relative flex items-center justify-between w-full md:w-[50%] z-10 shrink-0">
-                            <div class="flex flex-col w-[80%] md:w-[60%] pr-2">
-                                <span class="text-sm md:text-sm font-bold text-white capitalize tracking-wide truncate">${displayName}</span>
-                                <span class="text-[10px] md:text-[9px] text-white/60 lowercase tracking-widest mt-0.5 truncate">${user.email || ''}</span>
+                        <div class="relative flex items-start w-full md:w-[50%] z-10 shrink-0 min-w-0">
+                            <div class="flex flex-col w-1/2 md:flex-1 min-w-0 pr-2">
+                                <span class="text-sm md:text-sm font-bold text-white capitalize tracking-wide truncate block w-full">${displayName}</span>
+                                <span class="text-[10px] md:text-[9px] text-white/60 lowercase tracking-widest mt-0.5 truncate block w-full">${user.email || ''}</span>
                             </div>
-                            <div class="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex-1 md:w-[40%] flex justify-center items-center">
-                                <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer md:hover:text-white md:hover:bg-white/10 px-3 py-1.5 rounded-md border border-transparent transition-all">${user.role || 'SET ROLE'}</span>
-                                <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest text-center rounded-md border border-white/20 md:border-white/50 px-3 py-1.5 w-24 focus:outline-none focus:ring-0 md:focus:ring-1 focus:border-white/40 md:focus:border-white focus:bg-white/5 md:focus:bg-white/20 transition-all z-10" value="${user.role || ''}">
+                            <div class="flex items-start justify-between w-1/2 md:w-auto shrink-0 pl-1 md:pl-0">
+                                <div class="relative flex justify-center items-center shrink-0 md:translate-x-4 w-[85px] md:w-[100px] h-[24px]">
+                                    <span id="role-display-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onclick="openRoleEdit('${user.email}', '${user.role || ''}', event)" class="text-[10px] text-white/40 uppercase tracking-widest text-center cursor-pointer md:hover:text-white md:hover:bg-white/10 px-1 rounded-md border border-transparent transition-colors truncate block w-full">${user.role || 'SET ROLE'}</span>
+                                    <input type="text" id="role-input-${user.email ? user.email.replace(/[@.]/g, '-') : ''}" onblur="saveUserRole('${user.email}', this.value, event)" onkeydown="if(event.key === 'Enter') this.blur()" class="hidden absolute inset-0 w-full h-full px-1 bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest text-center rounded-md border border-white/20 focus:border-white/50 focus:bg-white/20 focus:outline-none focus:ring-0 transition-colors duration-300 z-10" value="${user.role || ''}">
+                                </div>
+                                <button onclick="showUserDeleteConfirm('${user.email}')" class="p-1.5 text-red-400 md:hover:text-white md:hover:bg-white/10 rounded transition-colors md:hidden shrink-0 z-20 -mr-1" title="Delete User">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <button onclick="showUserDeleteConfirm('${user.email}')" class="p-1.5 text-red-400 md:hover:text-white md:hover:bg-white/10 rounded transition-colors md:hidden ml-1 shrink-0 z-20" title="Delete User">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
                         </div>
                         
                         <div class="flex items-center w-full md:w-[50%] z-10 gap-2 md:gap-0 mt-1 md:mt-0">
