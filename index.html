@@ -17,30 +17,18 @@
     <link rel="apple-touch-startup-image" href="https://res.cloudinary.com/dobnqmfsg/image/upload/v1780237175/Untitled_jx2z0u.png">
     
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preload" href="https://res.cloudinary.com/dobnqmfsg/image/upload/v1780062631/Untitled_design__3_-removebg-preview_qnvznn.png" as="image">
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="https://unpkg.com/lucide@latest" as="script">
+
+    <link href="styles.css" rel="stylesheet">
+    
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
-                    },
-                    keyframes: {
-                        'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-                        'zoom-in': { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } }
-                    },
-                    animation: {
-                        'in': 'fade-in 0.2s ease-out, zoom-in 0.2s ease-out forwards',
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         .uppercase { text-transform: capitalize !important; }
         
@@ -2551,7 +2539,55 @@
                 return;
             }
 
-            // Check if user is already logged in (active session)
+            // ZERO-LATENCY BOOT: Optimistically unhide the dashboard using cached tokens BEFORE waiting for the network
+            const localProfileData = localStorage.getItem('callcutz_user_profile');
+            const hasLocalSession = localStorage.getItem('sb-ikeyqwtrqaqogecvxmiq-auth-token'); 
+            
+            if (localProfileData && hasLocalSession) {
+                // Instantly drop the login screen and show the app shell
+                document.getElementById('page-login').classList.add('hidden');
+                document.getElementById('page-login').classList.remove('flex');
+                document.getElementById('sidebar').classList.add('hidden');
+                document.getElementById('sidebar').classList.add('md:flex');
+                document.getElementById('mainContent').classList.remove('hidden');
+                
+                try {
+                    currentUserProfile = JSON.parse(localProfileData);
+                    authUserId = currentUserProfile.id;
+                    
+                    // Populate initial visual state instantly
+                    const name = currentUserProfile.full_name || 'User';
+                    const firstName = name.split(' ')[0];
+                    const init = firstName.charAt(0).toUpperCase();
+                    
+                    document.getElementById('sidebar-user-name').innerText = name;
+                    const sidebarInitEl = document.getElementById('sidebar-user-init');
+                    if (currentUserProfile.avatar) {
+                        sidebarInitEl.innerText = '';
+                        sidebarInitEl.style.backgroundImage = `url(${currentUserProfile.avatar})`;
+                    } else {
+                        sidebarInitEl.innerText = init;
+                    }
+                    
+                    // Load offline snapshot to populate lists instantly so the user doesn't see a blank dashboard
+                    const snapshot = localStorage.getItem('callcutz_offline_snapshot');
+                    if (snapshot) {
+                        const parsed = JSON.parse(snapshot);
+                        teamMembers = parsed.teamMembers || [];
+                        dbMeetings = parsed.dbMeetings || [];
+                        dbAvailability = parsed.dbAvailability || [];
+                        
+                        const savedPage = localStorage.getItem('schedulr_active_page') || 'dashboard';
+                        showPage(savedPage);
+                        
+                        if (savedPage === 'dashboard') renderDashboard();
+                        if (savedPage === 'availability') initAvailability();
+                        if (savedPage === 'teamview') renderTeamGrid();
+                    }
+                } catch(e) { console.warn("Optimistic boot fallback, waiting for network..."); }
+            }
+
+            // Check if user is already logged in (active session validates silently in the background)
             const { data: sessionData } = await supabaseClient.auth.getSession();
             const session = sessionData?.session;
             
@@ -3070,7 +3106,7 @@
                             ${p.avatar ? '' : p.init}
                         </div>
                         ${!isPrimary ? `
-                        <div onclick="event.stopPropagation(); currentBookingParticipants = currentBookingParticipants.filter(item => item.id !== '${p.id}'); updateBookingUI();" 
+                        <div onclick="event.stopPropagation(); currentBookingParticipants = currentBookingParticipants.filter(item => item.id !== '${p.id}'); updateBookingUI(); const selectedDateEl = document.querySelector('.booking-day.selected'); if (selectedDateEl) selectedDateEl.click();" 
                              class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/participant:opacity-100 transition-all cursor-pointer shadow-xl border border-white/20 z-10">
                              <i data-lucide="minus" class="w-3 h-3 text-white"></i>
                         </div>` : ''}
@@ -3118,6 +3154,12 @@
                     currentBookingParticipants.push(m);
                     updateBookingUI();
                     closeGuestModal();
+                    
+                    // Auto-refresh available slots for the newly added participant
+                    const selectedDateEl = document.querySelector('.booking-day.selected');
+                    if (selectedDateEl) {
+                        selectedDateEl.click();
+                    }
                 };
                 container.appendChild(card);
             });
@@ -3534,13 +3576,9 @@ if (hasRealConflict) {
             closeBooking();
             showSuccessScreen('Booking Sent', `Request submitted to ${otherNames}`);
 
-                // Notify each invitee via push
-                const inviteeIds = currentBookingParticipants.map(p => p.id);
-                const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Someone';
-                sendPushNotification(inviteeIds, 'New Meeting Request', `${hostName} is requesting a meeting: ${finalTitle}`, 'meeting-request');
-                
-                // Immediately refresh state behind the scenes for the sender
-                await fetchCoreData(false);
+                // Push Notifications are now super-enforced via the Database Trigger (Server-Side)
+// Immediately refresh state behind the scenes for the sender
+await fetchCoreData(false);
                 renderDashboard();
             } catch(e) {
                 console.error(e);
@@ -4274,9 +4312,9 @@ function renderDashboard() {
                             .filter(p => p.user_id !== authUserId && !editedMeeting.host_id.includes(p.user_id) && p.response_status === 'accepted')
                             .map(p => p.user_id);
                         if (participantsToNotify.length > 0) {
-                            const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
-                            sendPushNotification(participantsToNotify, 'Meeting Updated', `${hostName} updated: ${newTitle}`, 'meeting-edited');
-                        }
+    const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
+    await sendPushNotification(participantsToNotify, 'Meeting Updated', `${hostName} updated: ${newTitle}`, 'meeting-edited');
+}
                     }
         }
             } catch (e) {
@@ -4346,9 +4384,9 @@ async function deleteMeeting(id, skipWebhook = false) {
 
                 // Notify accepted participants (excluding the host who deleted it)
                 if (participantsToNotify.length > 0) {
-                    const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
-                    sendPushNotification(participantsToNotify, 'Meeting Cancelled', `${hostName} cancelled: ${deletedTitle}`, 'meeting-deleted');
-                }
+    const hostName = currentUserProfile?.full_name?.split(' ')[0] || 'Host';
+    await sendPushNotification(participantsToNotify, 'Meeting Cancelled', `${hostName} cancelled: ${deletedTitle}`, 'meeting-deleted');
+}
 
         await fetchCoreData(false);
         renderDashboard();
@@ -4404,32 +4442,30 @@ async function deleteMeeting(id, skipWebhook = false) {
                             const leadName = respondedMeeting.name || respondedMeeting.title.replace(/with\s+/i, '').replace(/\(Lead\)/i, '').trim();
                             
                             if (action === 'declined') {
-                                sendPushNotification(hostIds, 'Meeting Update', `${responderName} has declined the Lead Call request of ${leadName}.`, `lead-declined-${Date.now()}`);
-                            } else if (action === 'accepted') {
-                                const otherHostId = hostIds[0];
-                                const otherHostPart = respondedMeeting.meeting_participants.find(p => p.user_id === otherHostId);
-                                const otherStatus = otherHostPart ? otherHostPart.response_status : 'pending';
-                                
-                                if (otherStatus === 'pending') {
-                                    sendPushNotification(hostIds, 'Meeting Update', `${responderName} has accepted the Lead Call request of ${leadName}. Your response is required!`, `lead-update-${Date.now()}`);
-                                } else if (otherStatus === 'accepted') {
-                                    const meetStart = new Date(respondedMeeting.start_time_utc);
-                                    const isToday = new Date().toDateString() === meetStart.toDateString();
-                                    const timeString = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart);
-                                    
-                                    const d = meetStart.getDate();
-                                    const ordinal = d > 3 && d < 21 ? 'th' : ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][d % 10];
-                                    const cleanDateString = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, weekday: 'long' }).format(meetStart) + ', ' + d + ordinal + ' ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, month: 'long', year: 'numeric' }).format(meetStart);
+        await sendPushNotification(hostIds, 'Meeting Update', `${responderName} has declined the Lead Call request of ${leadName}.`, `lead-declined-${Date.now()}`);
+    } else if (action === 'accepted') {
+        const otherHostId = hostIds[0];
+        const otherHostPart = respondedMeeting.meeting_participants.find(p => p.user_id === otherHostId);
+        const otherStatus = otherHostPart ? otherHostPart.response_status : 'pending';
 
-                                    const dateText = isToday ? `for Today at ${timeString}` : `on ${cleanDateString} at ${timeString}`;
-                                    
-                                    sendPushNotification(hostIds, 'Meeting Update', `Lead Discovery Call with ${leadName} has been confirmed ${dateText}.`, `lead-confirmed-${Date.now()}`);
-                                }
-                            }
-                        } else {
-                            const actionLabel = action === 'accepted' ? 'accepted' : 'declined';
-                            sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted' : 'Declined'}`, `${responderName} ${actionLabel} your meeting request: ${respondedMeeting.title || 'Meeting'}`, `meeting-response-${Date.now()}`);
-                        }
+        if (otherStatus === 'pending') {
+            await sendPushNotification(hostIds, 'Meeting Update', `${responderName} has accepted the Lead Call request of ${leadName}. Your response is required!`, `lead-update-${Date.now()}`);
+        } else if (otherStatus === 'accepted') {
+            const meetStart = new Date(respondedMeeting.start_time_utc);
+            const isToday = new Date().toDateString() === meetStart.toDateString();
+            const timeString = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, hour: 'numeric', minute: '2-digit' }).format(meetStart);
+            const d = meetStart.getDate();
+            const ordinal = d > 3 && d < 21 ? 'th' : ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][d % 10];
+            const cleanDateString = new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, weekday: 'long' }).format(meetStart) + ', ' + d + ordinal + ' ' + new Intl.DateTimeFormat('en-US', { timeZone: currentUserTimezone, month: 'long', year: 'numeric' }).format(meetStart);
+            
+            const dateText = isToday ? `for Today at ${timeString}` : `on ${cleanDateString} at ${timeString}`;
+            await sendPushNotification(hostIds, 'Meeting Update', `Lead Discovery Call with ${leadName} has been confirmed ${dateText}.`, `lead-confirmed-${Date.now()}`);
+        }
+    }
+} else {
+    const actionLabel = action === 'accepted' ? 'accepted' : 'declined';
+    await sendPushNotification(hostIds, `Meeting ${action === 'accepted' ? 'Accepted' : 'Declined'}`, `${responderName} ${actionLabel} your meeting request: ${respondedMeeting.title || 'Meeting'}`, `meeting-response-${Date.now()}`);
+}
                     }
                 }
 
@@ -5516,17 +5552,57 @@ async function deleteMeeting(id, skipWebhook = false) {
                     return;
                 }
 
-                // If no cache, fallback to background check (works on Android, fails on strict iOS if not cached)
+                // Re-check OS permission state
                 if (Notification.permission === 'granted') {
                     const registration = await navigator.serviceWorker.ready;
                     let sub = await registration.pushManager.getSubscription();
+                    
                     if (!sub) {
                         sub = await registration.pushManager.subscribe({
                             userVisibleOnly: true,
                             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
                         });
+                        if (sub) await savePushSubscription(sub);
+                    } else {
+                        // FOREGROUND VALIDATION: Pull DB state and cross-check endpoint
+                        const { data } = await supabaseClient.from('push_subscriptions')
+                            .select('endpoint')
+                            .eq('user_id', authUserId)
+                            .order('created_at', { ascending: false })
+                            .limit(1);
+                        
+                        // Upsert if endpoint changed or doesn't exist on server
+                        if (!data || data.length === 0 || data[0].endpoint !== sub.endpoint) {
+                            await savePushSubscription(sub);
+                        }
                     }
-                    if (sub) await savePushSubscription(sub);
+                    
+                    // Recover failed background upserts
+                    if (window.indexedDB) {
+                        const req = indexedDB.open('CallcutzSWDB', 1);
+                        req.onsuccess = e => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('sw_store')) return;
+                            const tx = db.transaction('sw_store', 'readwrite');
+                            const getReq = tx.objectStore('sw_store').get('pending_sub');
+                            getReq.onsuccess = () => {
+                                if (getReq.result) {
+                                    savePushSubscription(JSON.parse(getReq.result)).then(() => {
+                                        tx.objectStore('sw_store').delete('pending_sub');
+                                    });
+                                }
+                            };
+                        };
+                    }
+                    
+                    // Sync User ID to SW on every foreground load
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'SYNC_USER_ID',
+                            userId: authUserId,
+                            anonKey: SUPABASE_ANON_KEY
+                        });
+                    }
                 }
             } catch (e) {
                 console.log('Push registration skipped:', e.message);
@@ -5535,15 +5611,37 @@ async function deleteMeeting(id, skipWebhook = false) {
 
         async function savePushSubscription(sub) {
             try {
-                const subJson = sub.toJSON();
+                const subJson = sub.toJSON ? sub.toJSON() : sub;
                 await supabaseClient.from('push_subscriptions').upsert({
                     user_id: authUserId,
                     endpoint: subJson.endpoint,
                     p256dh: subJson.keys.p256dh,
                     auth: subJson.keys.auth
                 }, { onConflict: 'user_id,endpoint' });
+
+                // BATTLE-READY ARCHITECTURE: Send ID and Anon Key to Service Worker 
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'SYNC_USER_ID',
+                        userId: authUserId,
+                        anonKey: SUPABASE_ANON_KEY
+                    });
+                }
             } catch (e) {
                 console.log('Push subscription save error:', e);
+                // Fallback: Save to IndexedDB so the next app launch can retry the sync
+                try {
+                    const req = indexedDB.open('CallcutzSWDB', 1);
+                    req.onsuccess = event => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('sw_store')) return;
+                        const tx = db.transaction('sw_store', 'readwrite');
+                        const subData = sub.toJSON ? sub.toJSON() : sub;
+                        tx.objectStore('sw_store').put(JSON.stringify(subData), 'pending_sub');
+                    };
+                } catch (idbErr) {
+                    console.error('Failed to stash pending subscription', idbErr);
+                }
             }
         }
 
@@ -5571,6 +5669,7 @@ async function deleteMeeting(id, skipWebhook = false) {
                                 registration.update();
                                 // Force a fresh data pull and UI re-render when waking up
                                 if (authUserId && !pwaOfflineGuard()) {
+                                    registerPushSubscription(); // SUPER ENFORCE: Refresh/verify push token automatically on wake
                                     await fetchCoreData(false);
                                     const activePage = localStorage.getItem('schedulr_active_page') || 'dashboard';
                                     if (activePage === 'dashboard') renderDashboard();
@@ -5590,6 +5689,15 @@ async function deleteMeeting(id, skipWebhook = false) {
                     if (!refreshing) {
                         refreshing = true;
                         window.location.reload();
+                    }
+                });
+
+                // SUPER ENFORCE: Listen for OS-level push subscription changes (expiration/rotation)
+                navigator.serviceWorker.addEventListener('message', async (event) => {
+                    if (event.data && event.data.type === 'PUSH_SUBSCRIPTION_UPDATE') {
+                        if (authUserId && typeof savePushSubscription === 'function') {
+                            await savePushSubscription(event.data.subscription);
+                        }
                     }
                 });
             });
