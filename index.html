@@ -3178,9 +3178,27 @@
             }
             modal.classList.add('hidden');
         }
+
         function closeBooking() {
             document.getElementById('team-gallery').classList.remove('hidden');
             document.getElementById('booking-interface').classList.add('hidden');
+            
+            // Clear inputs, calendar selection, and reset state
+            const titleInput = document.getElementById('call-title-input');
+            const notesInput = document.getElementById('call-notes-input');
+            if (titleInput) titleInput.value = '';
+            if (notesInput) notesInput.value = '';
+            
+            activeSelectedSlot = null;
+            const submitBtn = document.getElementById('send-booking-btn');
+            if (submitBtn) submitBtn.disabled = true;
+            
+            const timeSlotsContainer = document.getElementById('b-time-slots');
+            if (timeSlotsContainer) {
+                timeSlotsContainer.innerHTML = '<p class="text-[10px] text-white/30 uppercase">Pick a date</p>';
+            }
+            
+            document.querySelectorAll('.booking-day').forEach(el => el.classList.remove('selected'));
         }
 
         // GLOBAL CALENDAR STATE
@@ -3387,21 +3405,27 @@ validMeetingIds = [...validMeetingIds];
                                     if (hostHour === '24') hostHour = '00';
                                     
                                     const dayMap = { 'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6 };
-                                    const dayRule = pAvailRules.find(a => a.day_of_week === dayMap[hostDayShort]);
+                                    const dayRules = pAvailRules.filter(a => a.day_of_week === dayMap[hostDayShort]);
                                     
-                                    if (!dayRule) { allAvailable = false; break; }
+                                    if (dayRules.length === 0) { allAvailable = false; break; }
 
                                     const slotMins = parseInt(hostHour) * 60 + parseInt(hostMin);
-                                    const [sh, sm] = dayRule.start_time_local.split(':').map(Number);
-                                    const [eh, em] = dayRule.end_time_local.split(':').map(Number);
-                                    const startMins = sh * 60 + sm;
-                                    const endMins = eh * 60 + em;
+                                    
+                                    let matchesAnySlot = false;
+                                    for (const dayRule of dayRules) {
+                                        const [sh, sm] = dayRule.start_time_local.split(':').map(Number);
+                                        const [eh, em] = dayRule.end_time_local.split(':').map(Number);
+                                        const startMins = sh * 60 + sm;
+                                        const endMins = eh * 60 + em;
 
-                                    if (startMins <= endMins) {
-                                        if (slotMins < startMins || slotMins >= endMins) { allAvailable = false; break; }
-                                    } else { 
-                                        if (slotMins < startMins && slotMins >= endMins) { allAvailable = false; break; }
+                                        if (startMins <= endMins) {
+                                            if (slotMins >= startMins && slotMins < endMins) { matchesAnySlot = true; break; }
+                                        } else { 
+                                            if (slotMins >= startMins || slotMins < endMins) { matchesAnySlot = true; break; }
+                                        }
                                     }
+                                    
+                                    if (!matchesAnySlot) { allAvailable = false; break; }
                                 }
 
                                 if (allAvailable) {
